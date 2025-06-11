@@ -1,30 +1,21 @@
-# coordinates-transfer
+# Coordinate Mapper
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+This is a web application designed to help users upload CSV files containing coordinates and visualise them on an interactive map. It supports filtering and searching through the data, making it easy to explore and analyse geographic information.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/jonaschlegels-projects/v0-coordinates-transfer)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/mue5Qwv1Qth)
+## Features
 
-## Overview
+- Upload CSV files with coordinate data.
+- Display points on an interactive map.
+- Filter and search through data by categories or keywords.
+- Smooth navigation and selection of points on the map.
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Getting Started
+
+1. Clone this repository.
+2. Install dependencies using `pnpm install`.
+3. Start the development server with `pnpm run dev`.
+4. Open your browser and navigate to `http://localhost:3000`.
 
 ## Deployment
 
-Your project is live at:
-
-**[https://vercel.com/jonaschlegels-projects/v0-coordinates-transfer](https://vercel.com/jonaschlegels-projects/v0-coordinates-transfer)**
-
-## Build your app
-
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/mue5Qwv1Qth](https://v0.dev/chat/projects/mue5Qwv1Qth)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+This application is deployed on Vercel. You can access the live version [here](https://vercel.com/jonaschlegels-projects/v0-coordinates-transfer).
