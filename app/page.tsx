@@ -113,29 +113,51 @@ export default function HomePage() {
     setError(null);
     setProcessingProgress(0);
     try {
-      const assetBase =
-        process.env.NEXT_PUBLIC_BASE_PATH || '/coordinate-transformer';
-      const chunkCount = 12; // Update if you change the number of chunks
-      let allRaw: any[] = [];
-      for (let i = 1; i <= chunkCount; i++) {
-        const res = await fetch(`${assetBase}/points-chunks/points-${i}.json`);
-        if (!res.ok) throw new Error(`Failed to load chunk ${i}`);
-        const chunk = await res.json();
-        allRaw = allRaw.concat(chunk);
-        setProcessingProgress((i / chunkCount) * 0.9); // Show progress up to 90%
+      // Use runtime check for environment instead of process.env for static export compatibility
+      // Note: Even in development, Next.js uses the basePath from next.config.mjs
+      const isDevelopment =
+        typeof window !== 'undefined' &&
+        window.location.hostname === 'localhost';
+      
+      // Always use the basePath since it's configured in next.config.mjs for both dev and prod
+      const assetBase = '/coordinate-transformer';
+
+      // Load the main points.json file directly
+      const dataUrl = `${assetBase}/points.json`;
+      console.log('Loading data from:', dataUrl);
+
+      const res = await fetch(dataUrl);
+      if (!res.ok) {
+        throw new Error(
+          `Failed to load data from ${dataUrl}: ${res.status} ${res.statusText}`,
+        );
       }
+
+      setProcessingProgress(0.3); // 30% for fetch complete
+
+      const allRaw = await res.json();
+      console.log('Loaded raw data:', allRaw.length, 'records');
+      setProcessingProgress(0.6); // 60% for JSON parsing complete
+
       let processed;
       if (workerRef.current) {
-        processed = await workerRef.current.processRawData(allRaw, (progress) =>
-          setProcessingProgress(0.9 + progress * 0.1),
+        processed = await workerRef.current.processRawData(
+          allRaw,
+          (progress) => setProcessingProgress(0.6 + progress * 0.4), // 60% to 100% for processing
         );
       } else {
         processed = await processRawData(allRaw);
       }
+      console.log('Processed data:', processed.length, 'points');
       setPoints(processed);
       setProcessingProgress(1);
     } catch (err) {
-      setError('Failed to load points data');
+      console.error('Data loading error:', err);
+      setError(
+        `Failed to load points data: ${
+          err instanceof Error ? err.message : 'Unknown error'
+        }`,
+      );
       setPoints([]);
     }
   }, []);
@@ -468,14 +490,44 @@ export default function HomePage() {
 
               {!error && isPending && points.length === 0 && (
                 <div className="flex-grow flex items-center justify-center">
-                  <div className="text-center space-y-3">
-                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
-                    <div className="text-slate-600">
-                      Loading geographic data...
+                  <div className="text-center space-y-4 max-w-md mx-auto p-6">
+                    <div className="p-4 bg-blue-50 rounded-full w-fit mx-auto">
+                      <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
                     </div>
-                    <div className="text-sm text-slate-500">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-medium text-slate-800">
+                        Loading Historical Atlas Data
+                      </h3>
+                      <p className="text-sm text-slate-600">
+                        Processing geographic coordinates from the Grote
+                        Atlas...
+                      </p>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="w-full space-y-2">
+                      <div className="flex justify-between text-sm text-slate-500">
+                        <span>Progress</span>
+                        <span>{Math.round(processingProgress * 100)}%</span>
+                      </div>
+                      <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+                          style={{ width: `${processingProgress * 100}%` }}
+                        />
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {processingProgress < 0.3
+                          ? 'Fetching data...'
+                          : processingProgress < 0.6
+                          ? 'Parsing JSON...'
+                          : 'Processing coordinates...'}
+                      </div>
+                    </div>
+
+                    <div className="text-xs text-slate-400">
                       {workerRef.current
-                        ? 'Using Web Worker for processing'
+                        ? 'Using Web Worker for optimal performance'
                         : 'Processing on main thread'}
                     </div>
                     {processingProgress > 0 && processingProgress < 1 && (

@@ -19,7 +19,8 @@ export class DataWorkerClient {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.worker = new Worker('/data-worker.js');
+      // Use the basePath for the worker as well
+      this.worker = new Worker('/coordinate-transformer/data-worker.js');
     }
   }
 
