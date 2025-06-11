@@ -113,7 +113,10 @@ export default function HomePage() {
     setError(null);
     setProcessingProgress(0);
     try {
-      const res = await fetch('/points.json');
+      // Use assetPrefix from Next.js config for correct path on GitHub Pages
+      const assetBase =
+        process.env.NEXT_PUBLIC_BASE_PATH || '/coordinate-transformer';
+      const res = await fetch(`${assetBase}/points.json`);
       const raw = await res.json();
       if (workerRef.current) {
         const processed = await workerRef.current.processRawData(

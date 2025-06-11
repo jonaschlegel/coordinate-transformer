@@ -1,3 +1,0 @@
-// ARCHIVED: Original version before optimization
-
-// ...existing code from app/page-original.tsx...
