@@ -94,16 +94,19 @@ export default function HomePage() {
         const processed: Point[] = [];
         for (const row of raw) {
           const coordString =
+            row['Coördinaten\nCoordinates'] ||
             row['Coördinaten/Coordinates'] ||
             row['Coördinaten\nCoordinates'] ||
             row['Coördinaten'] ||
             row['Coordinates'];
           const originalName =
+            row['Oorspr. naam op de kaart\nOriginal name on the map'] ||
             row['Oorspr. naam op de kaart/Original name on the map'] ||
             row['Oorspr. naam op de kaart'] ||
             row['Original name on the map'] ||
             'N/A';
           const category =
+            row['Soortnaam\nCategory'] ||
             row['Soortnaam/Category'] ||
             row['Soortnaam'] ||
             row['Category'] ||
@@ -264,7 +267,7 @@ export default function HomePage() {
                 <>
                   <h3 className="text-md font-semibold mb-2 text-slate-700">
                     Displaying {filteredPoints.length} (of {points.length}{' '}
-                    total) from points.json
+                    total)
                   </h3>
                   <div className="flex-grow overflow-auto text-sm border border-gray-200 rounded">
                     <table className="min-w-full divide-y divide-gray-200">
