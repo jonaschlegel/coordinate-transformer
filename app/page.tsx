@@ -113,24 +113,29 @@ export default function HomePage() {
     setError(null);
     setProcessingProgress(0);
     try {
-      // Use assetPrefix from Next.js config for correct path on GitHub Pages
       const assetBase =
         process.env.NEXT_PUBLIC_BASE_PATH || '/coordinate-transformer';
-      const res = await fetch(`${assetBase}/points.json`);
-      const raw = await res.json();
-      if (workerRef.current) {
-        const processed = await workerRef.current.processRawData(
-          raw,
-          (progress) => setProcessingProgress(progress),
-        );
-        setPoints(processed);
-      } else {
-        const processed = await processRawData(raw);
-        setPoints(processed);
+      const chunkCount = 12; // Update if you change the number of chunks
+      let allRaw: any[] = [];
+      for (let i = 1; i <= chunkCount; i++) {
+        const res = await fetch(`${assetBase}/points-chunks/points-${i}.json`);
+        if (!res.ok) throw new Error(`Failed to load chunk ${i}`);
+        const chunk = await res.json();
+        allRaw = allRaw.concat(chunk);
+        setProcessingProgress((i / chunkCount) * 0.9); // Show progress up to 90%
       }
+      let processed;
+      if (workerRef.current) {
+        processed = await workerRef.current.processRawData(allRaw, (progress) =>
+          setProcessingProgress(0.9 + progress * 0.1),
+        );
+      } else {
+        processed = await processRawData(allRaw);
+      }
+      setPoints(processed);
       setProcessingProgress(1);
     } catch (err) {
-      setError('Failed to load points.json');
+      setError('Failed to load points data');
       setPoints([]);
     }
   }, []);
