@@ -301,17 +301,26 @@ export default function HomePage() {
 
   const getCategoryColor = (category: string): string => {
     const colors: Record<string, string> = {
-      'plaats/settlement': 'bg-blue-100 text-blue-800',
-      'eiland/island': 'bg-orange-100 text-orange-800',
-      'rivier/river': 'bg-green-100 text-green-800',
-      'kaap/cape': 'bg-purple-100 text-purple-800',
-      'landstreek/region': 'bg-gray-100 text-gray-800',
-      'baai/bay': 'bg-teal-100 text-teal-800',
-      'berg/mountain': 'bg-red-100 text-red-800',
-      'fort/fortress': 'bg-indigo-100 text-indigo-800',
-      Unknown: 'bg-slate-100 text-slate-800',
+      'plaats/settlement': 'bg-blue-50 text-blue-800 border border-blue-200',
+      'eiland/island': 'bg-amber-50 text-amber-800 border border-amber-200',
+      'rivier/river':
+        'bg-emerald-50 text-emerald-800 border border-emerald-200',
+      'kaap/cape': 'bg-violet-50 text-violet-800 border border-violet-200',
+      'landstreek/region': 'bg-stone-50 text-stone-800 border border-stone-200',
+      'baai/bay': 'bg-cyan-50 text-cyan-800 border border-cyan-200',
+      'berg/mountain': 'bg-rose-50 text-rose-800 border border-rose-200',
+      'fort/fortress': 'bg-indigo-50 text-indigo-800 border border-indigo-200',
+      'eilanden/islands':
+        'bg-orange-50 text-orange-800 border border-orange-200',
+      'ondiepte/shoals': 'bg-teal-50 text-teal-800 border border-teal-200',
+      'zeestraat/strait': 'bg-sky-50 text-sky-800 border border-sky-200',
+      'provincie/province':
+        'bg-purple-50 text-purple-800 border border-purple-200',
+      Unknown: 'bg-gray-50 text-gray-700 border border-gray-200',
     };
-    return colors[category] || 'bg-slate-100 text-slate-800';
+    return (
+      colors[category] || 'bg-gray-50 text-gray-700 border border-gray-200'
+    );
   };
 
   const handleExportVisible = () => {
@@ -435,33 +444,37 @@ export default function HomePage() {
 
   return (
     <TooltipProvider>
-      <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-amber-50 via-stone-50 to-amber-100">
         {/* Header */}
-        <header className="bg-white border-b border-slate-200 shadow-sm px-6 py-4 flex-shrink-0">
+        <header className="bg-white/95 backdrop-blur-sm border-b border-amber-200/50 shadow-sm cartographic-shadow px-6 py-4 flex-shrink-0">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Map className="h-6 w-6 text-blue-600" />
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl shadow-sm">
+                <Map className="h-7 w-7 text-blue-700" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">
-                  Coordinate Explorer
+                <h1 className="text-2xl font-serif font-semibold text-stone-800 tracking-wide">
+                  Historical Atlas Explorer
                 </h1>
-                <p className="text-sm text-slate-600">
-                  Historical Atlas Geographic Data Visualization
+                <p className="text-sm text-stone-600 font-medium tracking-wide">
+                  Geographic Data Visualization & Cartographic Analysis
                 </p>
               </div>
             </div>
             <div className="flex items-center space-x-2">
               {points.length > 0 && (
-                <div className="hidden sm:flex items-center space-x-4 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
+                <div className="hidden sm:flex items-center space-x-4 text-sm text-stone-600 bg-stone-100/60 px-3 py-2 rounded-lg border border-stone-200/50 cartographic-shadow">
                   <div className="flex items-center space-x-1">
-                    <BarChart3 className="h-4 w-4" />
-                    <span>{points.length} total points</span>
+                    <BarChart3 className="h-4 w-4 text-amber-700" />
+                    <span className="font-medium">
+                      {points.length} total points
+                    </span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <Filter className="h-4 w-4" />
-                    <span>{filteredPoints.length} visible</span>
+                    <Filter className="h-4 w-4 text-amber-700" />
+                    <span className="font-medium">
+                      {filteredPoints.length} visible
+                    </span>
                   </div>
                 </div>
               )}
@@ -486,13 +499,13 @@ export default function HomePage() {
 
         <main className="flex-grow flex flex-row overflow-hidden">
           {/* Left Panel */}
-          <div className="w-2/5 flex flex-col bg-white border-r border-slate-200 shadow-sm">
+          <div className="w-2/5 flex flex-col bg-stone-50/50 border-r border-stone-200/60 cartographic-shadow">
             {/* Controls Section */}
-            <div className="flex-shrink-0 p-4 bg-slate-50 border-b border-slate-200">
+            <div className="flex-shrink-0 p-4 bg-stone-100/40 border-b border-stone-200/60">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-800 flex items-center">
-                    <Search className="h-5 w-5 mr-2 text-slate-600" />
+                  <h2 className="text-lg font-serif font-semibold text-stone-800 flex items-center tracking-wide">
+                    <Search className="h-5 w-5 mr-2 text-amber-700" />
                     Search & Filter
                   </h2>
                   {(searchQuery || selectedCategoryFilter) && (
@@ -500,7 +513,7 @@ export default function HomePage() {
                       variant="ghost"
                       size="sm"
                       onClick={handleClearFilters}
-                      className="text-slate-600 hover:text-slate-800"
+                      className="text-stone-600 hover:text-stone-800"
                     >
                       Clear all
                     </Button>
@@ -511,19 +524,19 @@ export default function HomePage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="search-table"
-                      className="text-sm font-medium text-slate-700"
+                      className="text-sm font-serif font-semibold text-stone-700 tracking-wide"
                     >
                       Search locations
                     </label>
                     <div className="relative">
-                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-stone-400" />
                       <Input
                         id="search-table"
                         type="text"
                         placeholder="Search names, categories, coordinates..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-10"
+                        className="pl-10 bg-white/80 border-stone-300 focus:border-amber-400 focus:ring-amber-200"
                         disabled={isPending || points.length === 0}
                       />
                     </div>
@@ -532,7 +545,7 @@ export default function HomePage() {
                   <div className="space-y-2">
                     <label
                       htmlFor="category-filter"
-                      className="text-sm font-medium text-slate-700"
+                      className="text-sm font-serif font-semibold text-stone-700 tracking-wide"
                     >
                       Filter by category
                     </label>
@@ -671,16 +684,16 @@ export default function HomePage() {
                   ) : (
                     <div className="flex-grow overflow-hidden flex flex-col">
                       {/* Table Header with Controls */}
-                      <div className="flex-shrink-0 px-4 py-3 bg-white border-b border-slate-200">
+                      <div className="flex-shrink-0 px-4 py-3 bg-stone-50/80 border-b border-stone-200/60">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <BarChart3 className="h-4 w-4 text-slate-500" />
-                            <span className="text-sm font-medium text-slate-700">
+                            <BarChart3 className="h-4 w-4 text-amber-700" />
+                            <span className="text-sm font-medium text-stone-700">
                               {filteredPoints.length} location
                               {filteredPoints.length !== 1 ? 's' : ''}
                             </span>
                             {sortConfig && (
-                              <div className="flex items-center space-x-1 text-xs text-slate-500">
+                              <div className="flex items-center space-x-1 text-xs text-stone-500">
                                 <span>•</span>
                                 <span>
                                   Sorted by{' '}
@@ -698,7 +711,7 @@ export default function HomePage() {
                             variant="ghost"
                             size="sm"
                             onClick={() => setSortConfig(null)}
-                            className="text-xs text-slate-500 hover:text-slate-700"
+                            className="text-xs text-stone-500 hover:text-stone-700"
                             disabled={!sortConfig}
                           >
                             Clear sort
@@ -709,16 +722,16 @@ export default function HomePage() {
                       {/* Enhanced Table */}
                       <div className="flex-grow overflow-auto">
                         <table className="min-w-full">
-                          <thead className="bg-gradient-to-r from-slate-50 to-slate-100 sticky top-0 z-10 border-b border-slate-200">
+                          <thead className="bg-gradient-to-r from-stone-100/80 to-stone-200/60 sticky top-0 z-10 border-b border-stone-200/60">
                             <tr>
                               {tableHeaders.map((header) => (
                                 <th
                                   key={header}
-                                  className="group px-4 py-4 text-left cursor-pointer hover:bg-slate-100/50 transition-colors"
+                                  className="group px-4 py-4 text-left cursor-pointer hover:bg-stone-200/40 transition-colors"
                                   onClick={() => handleSort(header)}
                                 >
                                   <div className="flex items-center space-x-2">
-                                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                                    <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
                                       {getColumnDisplayName(header)}
                                     </span>
                                     <div className="flex flex-col">
@@ -726,16 +739,16 @@ export default function HomePage() {
                                         className={`h-3 w-3 ${
                                           sortConfig?.key === header &&
                                           sortConfig.direction === 'asc'
-                                            ? 'text-blue-600'
-                                            : 'text-slate-300 group-hover:text-slate-400'
+                                            ? 'text-amber-700'
+                                            : 'text-stone-400 group-hover:text-stone-500'
                                         }`}
                                       />
                                       <ChevronDown
                                         className={`h-3 w-3 -mt-1 ${
                                           sortConfig?.key === header &&
                                           sortConfig.direction === 'desc'
-                                            ? 'text-blue-600'
-                                            : 'text-slate-300 group-hover:text-slate-400'
+                                            ? 'text-amber-700'
+                                            : 'text-stone-400 group-hover:text-stone-500'
                                         }`}
                                       />
                                     </div>
@@ -753,14 +766,14 @@ export default function HomePage() {
                                 onClick={() => handlePointSelect(point.id)}
                                 onMouseEnter={() => setHoveredRowId(point.id)}
                                 onMouseLeave={() => setHoveredRowId(null)}
-                                className={`cursor-pointer transition-all duration-200 border-b border-slate-100 ${
+                                className={`cursor-pointer transition-all duration-200 border-b border-stone-100/60 ${
                                   selectedPointId === point.id
-                                    ? 'bg-blue-50 ring-2 ring-blue-200 ring-inset shadow-sm'
+                                    ? 'bg-amber-50/80 ring-2 ring-amber-300/60 ring-inset cartographic-shadow'
                                     : hoveredRowId === point.id
-                                    ? 'bg-slate-50 shadow-sm'
+                                    ? 'bg-stone-50/80 cartographic-shadow'
                                     : index % 2 === 0
-                                    ? 'bg-white'
-                                    : 'bg-slate-25'
+                                    ? 'bg-white/60'
+                                    : 'bg-stone-25/40'
                                 }`}
                               >
                                 {tableHeaders.map((header) => {
@@ -858,15 +871,15 @@ export default function HomePage() {
                                   <div className="flex items-center space-x-1">
                                     {selectedPointId === point.id && (
                                       <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                                        <span className="text-xs text-blue-600 font-medium">
+                                        <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse"></div>
+                                        <span className="text-xs text-amber-700 font-medium">
                                           Selected
                                         </span>
                                       </div>
                                     )}
                                     {hoveredRowId === point.id &&
                                       selectedPointId !== point.id && (
-                                        <Eye className="h-4 w-4 text-slate-400" />
+                                        <Eye className="h-4 w-4 text-stone-400" />
                                       )}
                                   </div>
                                 </td>
@@ -877,11 +890,11 @@ export default function HomePage() {
                       </div>
 
                       {/* Table Footer */}
-                      <div className="flex-shrink-0 px-4 py-3 bg-slate-50 border-t border-slate-200">
-                        <div className="flex items-center justify-between text-sm text-slate-600">
+                      <div className="flex-shrink-0 px-4 py-3 bg-stone-100/60 border-t border-stone-200/60">
+                        <div className="flex items-center justify-between text-sm text-stone-600">
                           <div className="flex items-center space-x-4">
                             <span>Click any row to view on map</span>
-                            <div className="h-3 w-px bg-slate-300"></div>
+                            <div className="h-3 w-px bg-stone-300"></div>
                             <span>{filteredPoints.length} results</span>
                           </div>
                           <div className="flex items-center space-x-2">
