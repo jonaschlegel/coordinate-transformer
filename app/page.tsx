@@ -1,6 +1,13 @@
 'use client';
 
-import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
+import {
+  useEffect,
+  useState,
+  useTransition,
+  useMemo,
+  useRef,
+  useCallback,
+} from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/Input';
 import {
@@ -36,6 +43,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/Tooltip';
+import {
+  Point,
+  processRawData,
+  createOptimizedFilter,
+} from '@/lib/data-processing';
+import { VirtualizedTable } from '@/components/VirtualizedTable';
+import { DataWorkerClient } from '@/lib/data-worker-client';
 
 const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
   ssr: false,
@@ -46,58 +60,16 @@ const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
   ),
 });
 
-interface Point {
-  id: string;
-  latitude: number;
-  longitude: number;
-  originalName: string;
-  category: string;
-  originalCoords: string;
-  rowData: Record<string, string>;
-}
-
-function parseSingleCoordinateEntry(
-  coordPairStr: string,
-): { latitude: number; longitude: number } | null {
-  if (
-    !coordPairStr ||
-    typeof coordPairStr !== 'string' ||
-    coordPairStr.trim() === '' ||
-    coordPairStr === '-' ||
-    coordPairStr === '??'
-  ) {
-    return null;
-  }
-  const [latStrFull, lonStrFull] = coordPairStr.split('/');
-  if (!latStrFull || !lonStrFull) return null;
-  let latVal: number;
-  let lonVal: number;
-  const latMatch = latStrFull.trim().match(/^([\d.-]+)([NS])$/i);
-  if (!latMatch) return null;
-  const [, latNums, latDir] = latMatch;
-  latVal = dmsToDecimal(latNums);
-  if (latDir.toUpperCase() === 'S') latVal = -latVal;
-  const lonMatch = lonStrFull.trim().match(/^([\d.-]+)([EW])$/i);
-  if (!lonMatch) return null;
-  const [, lonNums, lonDir] = lonMatch;
-  lonVal = dmsToDecimal(lonNums);
-  if (lonDir.toUpperCase() === 'W') lonVal = -lonVal;
-  if (isNaN(latVal) || isNaN(lonVal)) return null;
-  if (latVal < -90 || latVal > 90 || lonVal < -180 || lonVal > 180) return null;
-  return { latitude: latVal, longitude: lonVal };
-}
-
-function dmsToDecimal(dmsStr: string): number {
-  const parts = dmsStr.split('-').map((s) => Number.parseFloat(s.trim()));
-  if (parts.some(isNaN)) {
-    return Number.NaN;
-  }
-  let decimalDegrees = 0;
-  if (parts.length >= 1) decimalDegrees += parts[0];
-  if (parts.length >= 2) decimalDegrees += parts[1] / 60;
-  if (parts.length >= 3) decimalDegrees += parts[2] / 3600;
-  return decimalDegrees;
-}
+const computeTableHeaders = (points: Point[]): string[] => {
+  if (points.length === 0) return [];
+  const specialHeaders = [
+    'Computed Latitude',
+    'Computed Longitude',
+    'Parsed Coordinate Segment',
+  ];
+  const originalCsvHeaders = Object.keys(points[0].rowData);
+  return [...originalCsvHeaders, ...specialHeaders];
+};
 
 export default function HomePage() {
   const [points, setPoints] = useState<Point[]>([]);
@@ -116,172 +88,94 @@ export default function HomePage() {
   const [expandedColumns, setExpandedColumns] = useState<Set<string>>(
     new Set(),
   );
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const workerRef = useRef<DataWorkerClient | null>(null);
 
   useEffect(() => {
-    startTransition(async () => {
-      setError(null);
+    if (!workerRef.current) {
       try {
-        const res = await fetch('/points.json');
-        const raw = await res.json();
-        let idCounter = 0;
-        const processed: Point[] = [];
-        for (const row of raw) {
-          const coordString =
-            row['Coördinaten\nCoordinates'] ||
-            row['Coördinaten/Coordinates'] ||
-            row['Coördinaten\nCoordinates'] ||
-            row['Coördinaten'] ||
-            row['Coordinates'];
-          const originalName =
-            row['Oorspr. naam op de kaart\nOriginal name on the map'] ||
-            row['Oorspr. naam op de kaart/Original name on the map'] ||
-            row['Oorspr. naam op de kaart'] ||
-            row['Original name on the map'] ||
-            'N/A';
-          const category =
-            row['Soortnaam\nCategory'] ||
-            row['Soortnaam/Category'] ||
-            row['Soortnaam'] ||
-            row['Category'] ||
-            'Unknown';
-          if (
-            !coordString ||
-            coordString.trim() === '' ||
-            coordString === '-' ||
-            coordString === '??'
-          )
-            continue;
-          const coordParts = coordString
-            .split('+')
-            .map((s: string) => s.trim());
-          for (const part of coordParts) {
-            if (part === '' || part === '-' || part === '??') continue;
-            const parsedLocation = parseSingleCoordinateEntry(part);
-            if (parsedLocation) {
-              processed.push({
-                id: `point-${idCounter++}`,
-                latitude: parsedLocation.latitude,
-                longitude: parsedLocation.longitude,
-                originalName,
-                category: category || 'Unknown',
-                originalCoords: part,
-                rowData: row,
-              });
-            }
-          }
-        }
-        setPoints(processed);
+        workerRef.current = new DataWorkerClient();
       } catch (err) {
-        setError('Failed to load points.json');
-        setPoints([]);
+        console.warn(
+          'Web Worker not available, falling back to main thread processing',
+        );
       }
-    });
+    }
+    return () => {
+      if (workerRef.current) {
+        workerRef.current.destroy();
+        workerRef.current = null;
+      }
+    };
   }, []);
 
-  const tableHeaders = useMemo(() => {
-    if (points.length === 0) return [];
-    const specialHeaders = [
-      'Computed Latitude',
-      'Computed Longitude',
-      'Parsed Coordinate Segment',
-    ];
-    const originalCsvHeaders = Object.keys(points[0].rowData);
-    return [...originalCsvHeaders, ...specialHeaders];
-  }, [points]);
-
-  const handlePointSelect = (pointId: string | null) => {
-    setSelectedPointId(pointId);
-  };
-
-  const handleRefresh = () => {
-    startTransition(async () => {
-      setError(null);
-      try {
-        const res = await fetch('/points.json?' + new Date().getTime());
-        const raw = await res.json();
-        let idCounter = 0;
-        const processed: Point[] = [];
-        for (const row of raw) {
-          const coordString =
-            row['Coördinaten\nCoordinates'] ||
-            row['Coördinaten/Coordinates'] ||
-            row['Coördinaten\nCoordinates'] ||
-            row['Coördinaten'] ||
-            row['Coordinates'];
-          const originalName =
-            row['Oorspr. naam op de kaart\nOriginal name on the map'] ||
-            row['Oorspr. naam op de kaart/Original name on the map'] ||
-            row['Oorspr. naam op de kaart'] ||
-            row['Original name on the map'] ||
-            'N/A';
-          const category =
-            row['Soortnaam\nCategory'] ||
-            row['Soortnaam/Category'] ||
-            row['Soortnaam'] ||
-            row['Category'] ||
-            'Unknown';
-          if (
-            !coordString ||
-            coordString.trim() === '' ||
-            coordString === '-' ||
-            coordString === '??'
-          )
-            continue;
-          const coordParts = coordString
-            .split('+')
-            .map((s: string) => s.trim());
-          for (const part of coordParts) {
-            if (part === '' || part === '-' || part === '??') continue;
-            const parsedLocation = parseSingleCoordinateEntry(part);
-            if (parsedLocation) {
-              processed.push({
-                id: `point-${idCounter++}`,
-                latitude: parsedLocation.latitude,
-                longitude: parsedLocation.longitude,
-                originalName,
-                category: category || 'Unknown',
-                originalCoords: part,
-                rowData: row,
-              });
-            }
-          }
-        }
+  const loadData = useCallback(async () => {
+    setError(null);
+    setProcessingProgress(0);
+    try {
+      const res = await fetch('/points.json');
+      const raw = await res.json();
+      if (workerRef.current) {
+        const processed = await workerRef.current.processRawData(
+          raw,
+          (progress) => setProcessingProgress(progress),
+        );
         setPoints(processed);
-      } catch (err) {
-        setError('Failed to load points.json');
-        setPoints([]);
+      } else {
+        const processed = await processRawData(raw);
+        setPoints(processed);
       }
-    });
-  };
+      setProcessingProgress(1);
+    } catch (err) {
+      setError('Failed to load points.json');
+      setPoints([]);
+    }
+  }, []);
 
-  const handleClearFilters = () => {
+  useEffect(() => {
+    startTransition(() => {
+      loadData();
+    });
+  }, [loadData]);
+
+  const tableHeaders = useMemo(() => computeTableHeaders(points), [points]);
+
+  const handlePointSelect = useCallback((pointId: string | null) => {
+    setSelectedPointId(pointId);
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    startTransition(() => {
+      loadData();
+    });
+  }, [loadData]);
+
+  const handleClearFilters = useCallback(() => {
     setSearchQuery('');
     setSelectedCategoryFilter('');
     setSelectedPointId(null);
     setSortConfig(null);
-  };
+  }, []);
 
-  const handleSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (
-      sortConfig &&
-      sortConfig.key === key &&
-      sortConfig.direction === 'asc'
-    ) {
-      direction = 'desc';
-    }
-    setSortConfig({ key, direction });
-  };
+  const handleSort = useCallback((key: string) => {
+    setSortConfig((prev) => {
+      let direction: 'asc' | 'desc' = 'asc';
+      if (prev && prev.key === key && prev.direction === 'asc') {
+        direction = 'desc';
+      }
+      return { key, direction };
+    });
+  }, []);
 
-  const copyToClipboard = async (text: string) => {
+  const copyToClipboard = useCallback(async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
     }
-  };
+  }, []);
 
-  const getColumnDisplayName = (header: string): string => {
+  const getColumnDisplayName = useCallback((header: string): string => {
     const displayNames: Record<string, string> = {
       'Computed Latitude': 'Latitude',
       'Computed Longitude': 'Longitude',
@@ -296,9 +190,9 @@ export default function HomePage() {
       'Index page': 'Index',
     };
     return displayNames[header] || header.replace(/\n/g, ' ');
-  };
+  }, []);
 
-  const getCategoryColor = (category: string): string => {
+  const getCategoryColor = useCallback((category: string): string => {
     const colors: Record<string, string> = {
       'plaats/settlement': 'bg-blue-50 text-blue-800 border border-blue-200',
       'eiland/island': 'bg-amber-50 text-amber-800 border border-amber-200',
@@ -320,9 +214,29 @@ export default function HomePage() {
     return (
       colors[category] || 'bg-gray-50 text-gray-700 border border-gray-200'
     );
-  };
+  }, []);
 
-  const handleExportVisible = () => {
+  const uniqueCategoriesForFilter = useMemo(() => {
+    if (points.length === 0) return [];
+    const categories = new Set(points.map((point) => point.category));
+    const sortedCategories = Array.from(categories).sort((a, b) => {
+      if (a === 'Unknown') return 1;
+      if (b === 'Unknown') return -1;
+      return a.localeCompare(b);
+    });
+    return sortedCategories;
+  }, [points]);
+
+  const filteredPoints = useMemo(() => {
+    return createOptimizedFilter(
+      points,
+      selectedCategoryFilter,
+      searchQuery,
+      sortConfig,
+    );
+  }, [points, selectedCategoryFilter, searchQuery, sortConfig]);
+
+  const handleExportVisible = useCallback(() => {
     const dataToExport = filteredPoints.map((point) => ({
       name: point.originalName,
       category: point.category,
@@ -351,7 +265,7 @@ export default function HomePage() {
     a.download = 'filtered-coordinates.csv';
     a.click();
     URL.revokeObjectURL(url);
-  };
+  }, [filteredPoints]);
 
   useEffect(() => {
     if (selectedPointId && tableBodyRef.current) {
@@ -364,79 +278,6 @@ export default function HomePage() {
       });
     }
   }, [selectedPointId]);
-
-  const uniqueCategoriesForFilter = useMemo(() => {
-    if (points.length === 0) return [];
-    const categories = new Set(points.map((point) => point.category));
-    const sortedCategories = Array.from(categories).sort((a, b) => {
-      if (a === 'Unknown') return 1;
-      if (b === 'Unknown') return -1;
-      return a.localeCompare(b);
-    });
-    return sortedCategories;
-  }, [points]);
-
-  const filteredPoints = useMemo(() => {
-    let currentPoints = points;
-
-    if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
-      currentPoints = currentPoints.filter(
-        (point) => point.category === selectedCategoryFilter,
-      );
-    }
-
-    if (searchQuery.trim() !== '') {
-      const lowerCaseQuery = searchQuery.toLowerCase();
-      currentPoints = currentPoints.filter((point) => {
-        if (point.originalName?.toLowerCase().includes(lowerCaseQuery))
-          return true;
-        if (point.category?.toLowerCase().includes(lowerCaseQuery)) return true;
-        if (point.originalCoords?.toLowerCase().includes(lowerCaseQuery))
-          return true;
-        return Object.values(point.rowData).some((value) =>
-          String(value).toLowerCase().includes(lowerCaseQuery),
-        );
-      });
-    }
-
-    if (sortConfig) {
-      currentPoints = [...currentPoints].sort((a, b) => {
-        let aValue: any;
-        let bValue: any;
-
-        if (sortConfig.key === 'Computed Latitude') {
-          aValue = a.latitude;
-          bValue = b.latitude;
-        } else if (sortConfig.key === 'Computed Longitude') {
-          aValue = a.longitude;
-          bValue = b.longitude;
-        } else if (sortConfig.key === 'Parsed Coordinate Segment') {
-          aValue = a.originalCoords;
-          bValue = b.originalCoords;
-        } else {
-          aValue = a.rowData[sortConfig.key] || '';
-          bValue = b.rowData[sortConfig.key] || '';
-        }
-
-        if (typeof aValue === 'number' && typeof bValue === 'number') {
-          return sortConfig.direction === 'asc'
-            ? aValue - bValue
-            : bValue - aValue;
-        }
-
-        const aStr = String(aValue).toLowerCase();
-        const bStr = String(bValue).toLowerCase();
-
-        if (sortConfig.direction === 'asc') {
-          return aStr.localeCompare(bStr);
-        } else {
-          return bStr.localeCompare(aStr);
-        }
-      });
-    }
-
-    return currentPoints;
-  }, [points, selectedCategoryFilter, searchQuery, sortConfig]);
 
   return (
     <TooltipProvider>
@@ -625,8 +466,23 @@ export default function HomePage() {
                       Loading geographic data...
                     </div>
                     <div className="text-sm text-slate-500">
-                      This may take a moment
+                      {workerRef.current
+                        ? 'Using Web Worker for processing'
+                        : 'Processing on main thread'}
                     </div>
+                    {processingProgress > 0 && processingProgress < 1 && (
+                      <div className="w-48 mx-auto">
+                        <div className="bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${processingProgress * 100}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1">
+                          {Math.round(processingProgress * 100)}% complete
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -715,174 +571,26 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Enhanced Table */}
-                      <div className="flex-grow overflow-auto">
-                        <table className="min-w-full">
-                          <thead className="bg-gradient-to-r from-stone-100/80 to-stone-200/60 sticky top-0 z-10 border-b border-stone-200/60">
-                            <tr>
-                              {tableHeaders.map((header) => (
-                                <th
-                                  key={header}
-                                  className="group px-4 py-4 text-left cursor-pointer hover:bg-stone-200/40 transition-colors"
-                                  onClick={() => handleSort(header)}
-                                >
-                                  <div className="flex items-center space-x-2">
-                                    <span className="text-xs font-semibold text-stone-700 uppercase tracking-wider">
-                                      {getColumnDisplayName(header)}
-                                    </span>
-                                    <div className="flex flex-col">
-                                      <ChevronUp
-                                        className={`h-3 w-3 ${
-                                          sortConfig?.key === header &&
-                                          sortConfig.direction === 'asc'
-                                            ? 'text-amber-700'
-                                            : 'text-stone-400 group-hover:text-stone-500'
-                                        }`}
-                                      />
-                                      <ChevronDown
-                                        className={`h-3 w-3 -mt-1 ${
-                                          sortConfig?.key === header &&
-                                          sortConfig.direction === 'desc'
-                                            ? 'text-amber-700'
-                                            : 'text-stone-400 group-hover:text-stone-500'
-                                        }`}
-                                      />
-                                    </div>
-                                  </div>
-                                </th>
-                              ))}
-                              <th className="w-12 px-2 py-4"></th>
-                            </tr>
-                          </thead>
-                          <tbody ref={tableBodyRef} className="bg-white">
-                            {filteredPoints.map((point, index) => (
-                              <tr
-                                key={point.id}
-                                data-point-id={point.id}
-                                onClick={() => handlePointSelect(point.id)}
-                                onMouseEnter={() => setHoveredRowId(point.id)}
-                                onMouseLeave={() => setHoveredRowId(null)}
-                                className={`cursor-pointer transition-all duration-200 border-b border-stone-100/60 ${
-                                  selectedPointId === point.id
-                                    ? 'bg-amber-50/80 ring-2 ring-amber-300/60 ring-inset cartographic-shadow'
-                                    : hoveredRowId === point.id
-                                    ? 'bg-stone-50/80 cartographic-shadow'
-                                    : index % 2 === 0
-                                    ? 'bg-white/60'
-                                    : 'bg-stone-25/40'
-                                }`}
-                              >
-                                {tableHeaders.map((header) => {
-                                  let cellValue: string | number = '';
-                                  let isSpecialCell = false;
-
-                                  if (header === 'Computed Latitude') {
-                                    cellValue = point.latitude.toFixed(4);
-                                    isSpecialCell = true;
-                                  } else if (header === 'Computed Longitude') {
-                                    cellValue = point.longitude.toFixed(4);
-                                    isSpecialCell = true;
-                                  } else if (
-                                    header === 'Parsed Coordinate Segment'
-                                  ) {
-                                    cellValue = point.originalCoords;
-                                    isSpecialCell = true;
-                                  } else {
-                                    cellValue = point.rowData[header] || '';
-                                  }
-
-                                  return (
-                                    <td
-                                      key={header}
-                                      className="px-4 py-4 text-sm max-w-[200px]"
-                                    >
-                                      <div className="flex items-center space-x-2">
-                                        {header === 'Soortnaam\nCategory' ? (
-                                          <span
-                                            className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(
-                                              String(cellValue),
-                                            )}`}
-                                          >
-                                            {String(cellValue)}
-                                          </span>
-                                        ) : header ===
-                                          'Oorspr. naam op de kaart\nOriginal name on the map' ? (
-                                          <div className="flex items-center space-x-2">
-                                            <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                            <span
-                                              className="font-medium text-slate-900 truncate"
-                                              title={String(cellValue)}
-                                            >
-                                              {String(cellValue)}
-                                            </span>
-                                          </div>
-                                        ) : isSpecialCell ? (
-                                          <div className="flex items-center space-x-2">
-                                            <code className="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-mono">
-                                              {String(cellValue)}
-                                            </code>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                copyToClipboard(
-                                                  String(cellValue),
-                                                );
-                                              }}
-                                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-200 rounded transition-all"
-                                              title="Copy to clipboard"
-                                            >
-                                              <Copy className="h-3 w-3 text-slate-500" />
-                                            </button>
-                                          </div>
-                                        ) : header ===
-                                            'Coördinaten\nCoordinates' &&
-                                          cellValue &&
-                                          cellValue !== '-' ? (
-                                          <div className="flex items-center space-x-2">
-                                            <Globe className="h-3 w-3 text-slate-400 flex-shrink-0" />
-                                            <span
-                                              className="text-slate-700 truncate"
-                                              title={String(cellValue)}
-                                            >
-                                              {String(cellValue)}
-                                            </span>
-                                          </div>
-                                        ) : (
-                                          <span
-                                            className="text-slate-700 truncate block"
-                                            title={String(cellValue)}
-                                          >
-                                            {String(cellValue) || (
-                                              <span className="text-slate-400 italic">
-                                                —
-                                              </span>
-                                            )}
-                                          </span>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
-                                })}
-                                <td className="px-2 py-4">
-                                  <div className="flex items-center space-x-1">
-                                    {selectedPointId === point.id && (
-                                      <div className="flex items-center space-x-1">
-                                        <div className="w-2 h-2 bg-amber-600 rounded-full animate-pulse"></div>
-                                        <span className="text-xs text-amber-700 font-medium">
-                                          Selected
-                                        </span>
-                                      </div>
-                                    )}
-                                    {hoveredRowId === point.id &&
-                                      selectedPointId !== point.id && (
-                                        <Eye className="h-4 w-4 text-stone-400" />
-                                      )}
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                      {/* Virtualized Table */}
+                      <div
+                        className="overflow-x-auto w-full"
+                        style={{ WebkitOverflowScrolling: 'touch' }}
+                      >
+                        <div className="min-w-[900px]">
+                          <VirtualizedTable
+                            data={filteredPoints}
+                            headers={tableHeaders}
+                            selectedPointId={selectedPointId}
+                            hoveredRowId={hoveredRowId}
+                            onPointSelect={handlePointSelect}
+                            onRowHover={setHoveredRowId}
+                            getColumnDisplayName={getColumnDisplayName}
+                            getCategoryColor={getCategoryColor}
+                            copyToClipboard={copyToClipboard}
+                            sortConfig={sortConfig}
+                            onSort={handleSort}
+                          />
+                        </div>
                       </div>
 
                       {/* Table Footer */}
@@ -938,6 +646,18 @@ export default function HomePage() {
             />
           </div>
         </main>
+
+        <style jsx global>{`
+          .wider-table-row td {
+            white-space: normal !important;
+            word-break: break-word;
+            min-width: 180px;
+            max-width: 400px;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            font-size: 1.05rem;
+          }
+        `}</style>
       </div>
     </TooltipProvider>
   );

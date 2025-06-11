@@ -1,7 +1,7 @@
 'use client';
 
-import type React from 'react';
-import { useRef, useEffect, useState } from 'react';
+import React from 'react';
+import { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
@@ -13,8 +13,8 @@ import {
   RotateCcw,
   Layers,
   MapPin,
-  Eye,
-  EyeOff,
+  Blend,
+  Circle,
   Loader2,
   Globe,
   Navigation,
@@ -86,8 +86,9 @@ const TILE_LAYERS = {
 
 const DEFAULT_FALLBACK_COLOR = '#333333';
 
+// Memoized icon creation function
 const createCategoryIcon = (color: string, isSelected?: boolean) => {
-  const borderStyle = isSelected ? '3px solid #d97706' : '2px solid #fef3c7'; // Cartographic amber colors
+  const borderStyle = isSelected ? '3px solid #d97706' : '2px solid #fef3c7';
   const size = isSelected ? '18px' : '14px';
   const shadow = isSelected
     ? '0 0 12px rgba(217, 119, 6, 0.4), 0 2px 8px rgba(101, 79, 60, 0.3)'
@@ -138,20 +139,20 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     Record<string, { color: string }>
   >({});
 
-  // Helper functions
-  const handleZoomIn = () => {
+  // Optimized helper functions with useCallback
+  const handleZoomIn = useCallback(() => {
     if (mapInstance.current) {
       mapInstance.current.zoomIn();
     }
-  };
+  }, []);
 
-  const handleZoomOut = () => {
+  const handleZoomOut = useCallback(() => {
     if (mapInstance.current) {
       mapInstance.current.zoomOut();
     }
-  };
+  }, []);
 
-  const handleResetView = () => {
+  const handleResetView = useCallback(() => {
     if (mapInstance.current && markerClusterGroup.current) {
       try {
         const bounds = markerClusterGroup.current.getBounds();
@@ -167,9 +168,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         mapInstance.current.setView([20, 0], 2);
       }
     }
-  };
+  }, []);
 
-  const switchTileLayer = (layerKey: string) => {
+  const switchTileLayer = useCallback((layerKey: string) => {
     if (
       mapInstance.current &&
       TILE_LAYERS[layerKey as keyof typeof TILE_LAYERS]
@@ -190,9 +191,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
       setCurrentTileLayer(layerKey);
     }
-  };
+  }, []);
 
-  const toggleClustering = () => {
+  const toggleClustering = useCallback(() => {
     if (mapInstance.current && markerClusterGroup.current) {
       const markers = Object.values(markersRef.current);
 
@@ -208,7 +209,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
       setShowClusters(!showClusters);
     }
-  };
+  }, [showClusters]);
 
   // Update map stats
   useEffect(() => {
@@ -219,10 +220,10 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     setMapStats({ totalPoints, visiblePoints, categories });
   }, [points, activeCategoryStyles]);
 
-  useEffect(() => {
+  // Optimized category styles computation
+  const activeCategoryStylesMemo = useMemo(() => {
     if (!points || points.length === 0) {
-      setActiveCategoryStyles({});
-      return;
+      return {};
     }
 
     const uniqueCategories = Array.from(
@@ -264,8 +265,13 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         dynamicColorIndex++;
       }
     });
-    setActiveCategoryStyles(newStyles);
+    return newStyles;
   }, [points]);
+
+  // Update activeCategoryStyles when memoized version changes
+  useEffect(() => {
+    setActiveCategoryStyles(activeCategoryStylesMemo);
+  }, [activeCategoryStylesMemo]);
 
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
@@ -700,9 +706,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                 }
               >
                 {showClusters ? (
-                  <Eye className="h-4 w-4" />
+                  <Blend className="h-4 w-4" />
                 ) : (
-                  <EyeOff className="h-4 w-4" />
+                  <Circle className="h-4 w-4" />
                 )}
               </button>
             </div>
@@ -761,4 +767,4 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   );
 };
 
-export default MapDisplay;
+export default React.memo(MapDisplay);

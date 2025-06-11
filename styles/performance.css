@@ -1,0 +1,162 @@
+/* Optimized performance styles */
+
+/* CSS Grid for faster layout calculations */
+.cartographic-grid {
+  display: grid;
+  grid-template-columns: 2fr 3fr;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Hardware-accelerated transforms */
+.cartographic-shadow {
+  transform: translateZ(0);
+  will-change: transform;
+  box-shadow: 0 1px 3px rgba(101, 79, 60, 0.1),
+    0 1px 2px rgba(101, 79, 60, 0.06);
+}
+
+/* Optimized table styling for virtualization */
+.virtualized-table-container {
+  contain: layout style paint;
+  overflow: hidden;
+}
+
+.table-row-optimized {
+  contain: layout style;
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Reduce repaints with contain */
+.map-container {
+  contain: layout style paint;
+  isolation: isolate;
+}
+
+/* Performance optimizations for animations */
+.animate-spin-optimized {
+  animation: spin 1s linear infinite;
+  transform: translateZ(0);
+}
+
+.animate-pulse-optimized {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  transform: translateZ(0);
+}
+
+/* Optimize marker clusters */
+.marker-cluster {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+/* Optimized backdrop filters */
+.backdrop-blur-optimized {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  contain: layout style paint;
+}
+
+/* Tooltip optimizations */
+.cartographic-tooltip {
+  contain: layout style paint;
+  transform: translateZ(0);
+  pointer-events: none;
+  z-index: 1000;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 12px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+
+/* Optimize scrollbars */
+.optimized-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(203, 213, 225, 0.5) transparent;
+}
+
+.optimized-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.optimized-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.optimized-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(203, 213, 225, 0.5);
+  border-radius: 3px;
+}
+
+.optimized-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(203, 213, 225, 0.7);
+}
+
+/* Performance for large datasets */
+.data-row {
+  contain: layout;
+  height: 60px;
+  display: flex;
+  align-items: center;
+}
+
+/* GPU acceleration for smooth interactions */
+.hover-optimized {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transform: translateZ(0);
+}
+
+.hover-optimized:hover {
+  transform: translateZ(0) translateY(-1px);
+}
+
+/* Loading spinner optimization */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Dark mode optimizations */
+@media (prefers-color-scheme: dark) {
+  .cartographic-tooltip {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin-optimized,
+  .animate-pulse-optimized,
+  .hover-optimized {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .cartographic-shadow {
+    box-shadow: 0 0.5px 1.5px rgba(101, 79, 60, 0.1),
+      0 0.5px 1px rgba(101, 79, 60, 0.06);
+  }
+}
