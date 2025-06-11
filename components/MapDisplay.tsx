@@ -305,7 +305,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       removeOutsideVisibleBounds: true,
       animate: true,
       animateAddingMarkers: true,
-      disableClusteringAtZoom: 18, 
+      disableClusteringAtZoom: 18,
       iconCreateFunction: function (cluster: any) {
         const count = cluster.getChildCount();
         let size = 'small';
@@ -362,7 +362,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
     mapInstance.current.addLayer(markerClusterGroup.current);
 
-    // Set loading to false after a short delay
     setTimeout(() => {
       setIsMapLoading(false);
       setIsMapInitialized(true);
@@ -393,7 +392,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           'div',
           'info legend leaflet-control-layers leaflet-control-layers-expanded',
         );
-        // Enhanced cartographic styling for legend
         div.style.backgroundColor = 'rgba(250, 250, 249, 0.95)';
         div.style.backdropFilter = 'blur(8px)';
         div.style.padding = '12px 16px';
@@ -403,6 +401,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           '0 4px 12px rgba(101, 79, 60, 0.15), 0 2px 6px rgba(101, 79, 60, 0.1)';
         div.style.maxWidth = '200px';
         div.style.fontFamily = "'Inter', system-ui, sans-serif";
+        div.style.marginBottom = '80px';
 
         const header = L.DomUtil.create('div', '', div);
         header.style.cursor = 'pointer';
@@ -412,7 +411,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         header.style.display = 'flex';
         header.style.justifyContent = 'space-between';
         header.style.alignItems = 'center';
-        header.style.color = '#57534e'; // stone-600
+        header.style.color = '#57534e';
         header.style.letterSpacing = '0.025em';
         header.innerHTML = `<span>Categories</span><span style="font-size: 1.1em; color: #d97706; transition: transform 0.2s ease;">${
           isLegendOpen ? '&#9660;' : '&#9654;'
@@ -598,9 +597,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      {/* Loading Overlay */}
       {isMapLoading && (
-        <div className="absolute inset-0 bg-gradient-to-br from-stone-100 via-amber-50 to-stone-100 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-gradient-to-br from-stone-100 via-amber-50 to-stone-100 z-[1050] flex items-center justify-center">
           <div className="text-center space-y-6">
             <div className="relative">
               <Globe className="h-16 w-16 text-amber-600 mx-auto animate-pulse" />
@@ -618,15 +616,11 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
         </div>
       )}
 
-      {/* Map Container */}
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Map Controls */}
       {isMapInitialized && !isMapLoading && (
         <>
-          {/* Top Controls Bar */}
-          <div className="absolute top-4 left-4 z-40 flex items-center space-x-3">
-            {/* Map Stats */}
+          <div className="absolute top-4 left-4 z-[1040] flex items-center space-x-3">
             <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow px-4 py-3 border border-stone-200/60">
               <div className="flex items-center space-x-6 text-sm">
                 <div className="flex items-center space-x-2">
@@ -646,7 +640,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
               </div>
             </div>
 
-            {/* Layer Switcher */}
             <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <div className="flex">
                 {Object.entries(TILE_LAYERS).map(([key, layer]) => (
@@ -667,9 +660,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
             </div>
           </div>
 
-          {/* Right Side Controls */}
-          <div className="absolute top-4 right-4 z-40 flex flex-col space-y-3">
-            {/* Zoom Controls */}
+          <div className="absolute top-4 right-4 z-[1040] flex flex-col space-y-3">
             <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <div className="flex flex-col">
                 <button
@@ -696,7 +687,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
               </div>
             </div>
 
-            {/* Clustering Toggle */}
             <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <button
                 onClick={toggleClustering}
@@ -718,9 +708,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
             </div>
           </div>
 
-          {/* Bottom Status Bar */}
           {points.length > 0 && (
-            <div className="absolute bottom-4 left-4 right-4 z-40">
+            <div className="absolute bottom-4 left-4 right-4 z-[1040]">
               <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow px-6 py-3 border border-stone-200/60">
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center space-x-6">
@@ -748,9 +737,8 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
             </div>
           )}
 
-          {/* Empty State */}
           {points.length === 0 && !isMapLoading && (
-            <div className="absolute inset-0 bg-stone-100/60 z-30 flex items-center justify-center">
+            <div className="absolute inset-0 bg-stone-100/60 z-[1030] flex items-center justify-center">
               <div className="bg-stone-50/95 backdrop-blur-sm p-10 rounded-2xl cartographic-shadow text-center space-y-6 max-w-md mx-4 border border-stone-200/60">
                 <div className="p-4 bg-amber-100/60 rounded-2xl w-fit mx-auto">
                   <MapPin className="h-10 w-10 text-amber-700" />
