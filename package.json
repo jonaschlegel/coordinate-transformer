@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "csv-to-json": "node ./scripts/csv-to-json.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

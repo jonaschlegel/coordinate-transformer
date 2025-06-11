@@ -1,9 +1,7 @@
 'use client';
 
-import type { ChangeEvent } from 'react';
-import { useState, useTransition, useMemo, useEffect, useRef } from 'react';
+import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { processUploadedCsv } from './actions';
 import { Input } from '@/components/ui/input';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import {
@@ -34,70 +32,117 @@ interface Point {
   rowData: Record<string, string>;
 }
 
+function parseSingleCoordinateEntry(
+  coordPairStr: string,
+): { latitude: number; longitude: number } | null {
+  if (
+    !coordPairStr ||
+    typeof coordPairStr !== 'string' ||
+    coordPairStr.trim() === '' ||
+    coordPairStr === '-' ||
+    coordPairStr === '??'
+  ) {
+    return null;
+  }
+  const [latStrFull, lonStrFull] = coordPairStr.split('/');
+  if (!latStrFull || !lonStrFull) return null;
+  let latVal: number;
+  let lonVal: number;
+  const latMatch = latStrFull.trim().match(/^([\d.-]+)([NS])$/i);
+  if (!latMatch) return null;
+  const [, latNums, latDir] = latMatch;
+  latVal = dmsToDecimal(latNums);
+  if (latDir.toUpperCase() === 'S') latVal = -latVal;
+  const lonMatch = lonStrFull.trim().match(/^([\d.-]+)([EW])$/i);
+  if (!lonMatch) return null;
+  const [, lonNums, lonDir] = lonMatch;
+  lonVal = dmsToDecimal(lonNums);
+  if (lonDir.toUpperCase() === 'W') lonVal = -lonVal;
+  if (isNaN(latVal) || isNaN(lonVal)) return null;
+  if (latVal < -90 || latVal > 90 || lonVal < -180 || lonVal > 180) return null;
+  return { latitude: latVal, longitude: lonVal };
+}
+
+function dmsToDecimal(dmsStr: string): number {
+  const parts = dmsStr.split('-').map((s) => Number.parseFloat(s.trim()));
+  if (parts.some(isNaN)) {
+    return Number.NaN;
+  }
+  let decimalDegrees = 0;
+  if (parts.length >= 1) decimalDegrees += parts[0];
+  if (parts.length >= 2) decimalDegrees += parts[1] / 60;
+  if (parts.length >= 3) decimalDegrees += parts[2] / 3600;
+  return decimalDegrees;
+}
+
 export default function HomePage() {
   const [points, setPoints] = useState<Point[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [fileName, setFileName] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [selectedPointId, setSelectedPointId] = useState<string | null>(null);
   const tableBodyRef = useRef<HTMLTableSectionElement>(null);
-
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
-    useState<string>(''); // "" means all categories
+    useState<string>('');
 
-  const handleFileChange = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    // Reset filters and selected point on new file or file removal
-    setSearchQuery('');
-    setSelectedCategoryFilter('');
-    setSelectedPointId(null);
-
-    if (!file) {
-      setPoints([]);
-      setError(null);
-      setFileName(null);
-      setSelectedPointId(null);
-      return;
-    }
-    setFileName(file.name);
-    setError(null);
-    setPoints([]);
-    setSelectedPointId(null);
+  // Load points from public/points.json on mount
+  useEffect(() => {
     startTransition(async () => {
+      setError(null);
       try {
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-          const text = e.target?.result as string;
-          if (text) {
-            const result = await processUploadedCsv(text);
-            if (result.error) {
-              setError(result.error);
-              setPoints([]);
-            } else {
-              setPoints(result.points);
-              setError(null);
+        const res = await fetch('/points.json');
+        const raw = await res.json();
+        let idCounter = 0;
+        const processed: Point[] = [];
+        for (const row of raw) {
+          const coordString =
+            row['Coördinaten/Coordinates'] ||
+            row['Coördinaten\nCoordinates'] ||
+            row['Coördinaten'] ||
+            row['Coordinates'];
+          const originalName =
+            row['Oorspr. naam op de kaart/Original name on the map'] ||
+            row['Oorspr. naam op de kaart'] ||
+            row['Original name on the map'] ||
+            'N/A';
+          const category =
+            row['Soortnaam/Category'] ||
+            row['Soortnaam'] ||
+            row['Category'] ||
+            'Unknown';
+          if (
+            !coordString ||
+            coordString.trim() === '' ||
+            coordString === '-' ||
+            coordString === '??'
+          )
+            continue;
+          const coordParts = coordString
+            .split('+')
+            .map((s: string) => s.trim());
+          for (const part of coordParts) {
+            if (part === '' || part === '-' || part === '??') continue;
+            const parsedLocation = parseSingleCoordinateEntry(part);
+            if (parsedLocation) {
+              processed.push({
+                id: `point-${idCounter++}`,
+                latitude: parsedLocation.latitude,
+                longitude: parsedLocation.longitude,
+                originalName,
+                category: category || 'Unknown',
+                originalCoords: part,
+                rowData: row,
+              });
             }
-          } else {
-            setError('Failed to read file content.');
-            setPoints([]);
           }
-        };
-        reader.onerror = () => {
-          setError('Error reading file.');
-          setPoints([]);
-        };
-        reader.readAsText(file);
+        }
+        setPoints(processed);
       } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'An unknown error occurred during file processing.',
-        );
+        setError('Failed to load points.json');
         setPoints([]);
       }
     });
-  };
+  }, []);
 
   const tableHeaders = useMemo(() => {
     if (points.length === 0) return [];
@@ -224,53 +269,15 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <div className="flex-shrink-0">
-            <h2 className="text-lg font-semibold mb-2 text-slate-700">
-              Upload CSV File
-            </h2>
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Input
-                type="file"
-                accept=".csv"
-                onChange={handleFileChange}
-                className="max-w-xs"
-                disabled={isPending}
-              />
-              {fileName && !isPending && (
-                <span className="text-sm text-gray-600">
-                  Selected: {fileName}
-                </span>
-              )}
-            </div>
-            {isPending && (
-              <div className="mt-3 flex items-center text-slate-600">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Processing CSV...
-              </div>
-            )}
-          </div>
-
-          {error && (
-            <div
-              className="bg-red-100 border-l-4 border-red-500 text-red-700 p-3 rounded flex items-start flex-shrink-0"
-              role="alert"
-            >
-              <AlertCircle className="h-5 w-5 mr-2 mt-0.5 flex-shrink-0" />
-              <div>
-                <strong className="font-bold">Error:</strong>
-                <span className="block sm:inline ml-1 text-sm">{error}</span>
-              </div>
-            </div>
-          )}
 
           <div className="flex-grow overflow-hidden flex flex-col">
             {!error &&
               (points.length > 0 || searchQuery || selectedCategoryFilter) &&
               !isPending && (
                 <>
-                  <h3 className="text-md font-semibold text-slate-700 mb-2 flex-shrink-0">
+                  <h3 className="text-md font-semibold mb-2 text-slate-700">
                     Displaying {filteredPoints.length} (of {points.length}{' '}
-                    total) from {fileName}
+                    total) from points.json
                   </h3>
                   <div className="flex-grow overflow-auto text-sm border border-gray-200 rounded">
                     <table className="min-w-full divide-y divide-gray-200">
@@ -340,16 +347,16 @@ export default function HomePage() {
                     )}
                 </>
               )}
-            {!error && points.length === 0 && !isPending && fileName && (
+            {!error && points.length === 0 && !isPending && (
               <div className="p-3 bg-yellow-100 text-yellow-700 rounded flex-grow flex items-center justify-center text-sm">
                 <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                No points extracted from {fileName}. Check file format and
-                column names.
+                No points found in points.json. Check file format and column
+                names.
               </div>
             )}
-            {!fileName && !isPending && !error && (
+            {!isPending && !error && (
               <div className="p-3 text-gray-500 rounded flex-grow flex items-center justify-center text-sm">
-                Select a CSV file to display locations and data.
+                Loading data, please wait...
               </div>
             )}
             {isPending && points.length === 0 && (
