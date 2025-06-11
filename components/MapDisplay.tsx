@@ -7,6 +7,18 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import 'leaflet.markercluster';
+import {
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
+  Layers,
+  MapPin,
+  Eye,
+  EyeOff,
+  Loader2,
+  Globe,
+  Navigation,
+} from 'lucide-react';
 
 interface PointData {
   id: string;
@@ -52,6 +64,26 @@ const PREDEFINED_CATEGORY_COLORS: Record<string, string> = {
   'ruïne/ruin': '#c5b0d5',
   unknown: '#bcbd22',
 };
+
+const TILE_LAYERS = {
+  osm: {
+    name: 'OpenStreetMap',
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  },
+  satellite: {
+    name: 'Satellite',
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+  },
+  terrain: {
+    name: 'Terrain',
+    url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a>',
+  },
+};
+
 const DEFAULT_FALLBACK_COLOR = '#333333';
 
 const createCategoryIcon = (color: string, isSelected?: boolean) => {
@@ -90,10 +122,99 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
   const legendControl = useRef<L.Control | null>(null);
   const [isMapInitialized, setIsMapInitialized] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(true);
+  const [isMapLoading, setIsMapLoading] = useState(true);
+  const [currentTileLayer, setCurrentTileLayer] = useState('osm');
+  const [showClusters, setShowClusters] = useState(true);
+  const [mapStats, setMapStats] = useState({
+    totalPoints: 0,
+    visiblePoints: 0,
+    categories: 0,
+  });
   const markersRef = useRef<Record<string, L.Marker>>({});
   const [activeCategoryStyles, setActiveCategoryStyles] = useState<
     Record<string, { color: string }>
   >({});
+
+  // Helper functions
+  const handleZoomIn = () => {
+    if (mapInstance.current) {
+      mapInstance.current.zoomIn();
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapInstance.current) {
+      mapInstance.current.zoomOut();
+    }
+  };
+
+  const handleResetView = () => {
+    if (mapInstance.current && markerClusterGroup.current) {
+      try {
+        const bounds = markerClusterGroup.current.getBounds();
+        if (bounds.isValid()) {
+          mapInstance.current.fitBounds(bounds, {
+            padding: [20, 20],
+            maxZoom: 16,
+          });
+        } else {
+          mapInstance.current.setView([20, 0], 2);
+        }
+      } catch (e) {
+        mapInstance.current.setView([20, 0], 2);
+      }
+    }
+  };
+
+  const switchTileLayer = (layerKey: string) => {
+    if (
+      mapInstance.current &&
+      TILE_LAYERS[layerKey as keyof typeof TILE_LAYERS]
+    ) {
+      const layer = TILE_LAYERS[layerKey as keyof typeof TILE_LAYERS];
+
+      // Remove existing tile layers
+      mapInstance.current.eachLayer((layer) => {
+        if (layer instanceof L.TileLayer) {
+          mapInstance.current?.removeLayer(layer);
+        }
+      });
+
+      // Add new tile layer
+      L.tileLayer(layer.url, {
+        attribution: layer.attribution,
+      }).addTo(mapInstance.current);
+
+      setCurrentTileLayer(layerKey);
+    }
+  };
+
+  const toggleClustering = () => {
+    if (mapInstance.current && markerClusterGroup.current) {
+      const markers = Object.values(markersRef.current);
+
+      if (showClusters) {
+        // Remove from cluster group and add directly to map
+        markerClusterGroup.current.clearLayers();
+        markers.forEach((marker) => mapInstance.current?.addLayer(marker));
+      } else {
+        // Remove from map and add to cluster group
+        markers.forEach((marker) => mapInstance.current?.removeLayer(marker));
+        markerClusterGroup.current.addLayers(markers);
+      }
+
+      setShowClusters(!showClusters);
+    }
+  };
+
+  // Update map stats
+  useEffect(() => {
+    const totalPoints = points.length;
+    const visiblePoints = Object.keys(markersRef.current).length;
+    const categories = Object.keys(activeCategoryStyles).length;
+
+    setMapStats({ totalPoints, visiblePoints, categories });
+  }, [points, activeCategoryStyles]);
 
   useEffect(() => {
     if (!points || points.length === 0) {
@@ -145,28 +266,50 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
   useEffect(() => {
     if (!mapContainer.current || mapInstance.current) return;
+
+    setIsMapLoading(true);
+
     mapInstance.current = L.map(mapContainer.current, {
       center: [20, 0],
       zoom: 2,
       attributionControl: false,
+      zoomControl: false, // We'll add custom controls
     });
+
+    // Add attribution control in bottom left
     L.control
       .attribution({
         prefix: '<a href="https://leafletjs.com">Leaflet</a>',
         position: 'bottomleft',
       })
       .addTo(mapInstance.current);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+
+    // Add initial tile layer
+    const initialLayer =
+      TILE_LAYERS[currentTileLayer as keyof typeof TILE_LAYERS];
+    L.tileLayer(initialLayer.url, {
+      attribution: initialLayer.attribution,
     }).addTo(mapInstance.current);
+
+    // Initialize marker cluster group
     // @ts-ignore
     markerClusterGroup.current = L.markerClusterGroup({
       chunkedLoading: true,
       maxClusterRadius: 60,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true,
+      spiderfyOnMaxZoom: true,
+      removeOutsideVisibleBounds: true,
     });
+
     mapInstance.current.addLayer(markerClusterGroup.current);
-    setIsMapInitialized(true);
+
+    // Set loading to false after a short delay
+    setTimeout(() => {
+      setIsMapLoading(false);
+      setIsMapInitialized(true);
+    }, 500);
+
     return () => {
       if (legendControl.current && mapInstance.current)
         mapInstance.current.removeControl(legendControl.current);
@@ -174,6 +317,7 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       mapInstance.current = null;
       markerClusterGroup.current = null;
       setIsMapInitialized(false);
+      setIsMapLoading(true);
     };
   }, []);
 
@@ -360,7 +504,180 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     });
   }, [selectedPointId, isMapInitialized, activeCategoryStyles, points]);
 
-  return <div ref={mapContainer} className="w-full h-full" />;
+  return (
+    <div className="relative w-full h-full">
+      {/* Loading Overlay */}
+      {isMapLoading && (
+        <div className="absolute inset-0 bg-slate-100 z-50 flex items-center justify-center">
+          <div className="text-center space-y-4">
+            <div className="relative">
+              <Globe className="h-12 w-12 text-blue-600 mx-auto animate-pulse" />
+              <Loader2 className="absolute inset-0 h-12 w-12 text-blue-400 animate-spin" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-lg font-medium text-slate-800">
+                Initializing Map
+              </h3>
+              <p className="text-sm text-slate-600">
+                Loading geographic visualization...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Map Container */}
+      <div ref={mapContainer} className="w-full h-full" />
+
+      {/* Map Controls */}
+      {isMapInitialized && !isMapLoading && (
+        <>
+          {/* Top Controls Bar */}
+          <div className="absolute top-4 left-4 z-40 flex items-center space-x-2">
+            {/* Map Stats */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 border border-white/20">
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-1">
+                  <MapPin className="h-4 w-4 text-blue-600" />
+                  <span className="font-medium text-slate-700">
+                    {mapStats.visiblePoints}
+                  </span>
+                  <span className="text-slate-500">points</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Layers className="h-4 w-4 text-emerald-600" />
+                  <span className="font-medium text-slate-700">
+                    {mapStats.categories}
+                  </span>
+                  <span className="text-slate-500">categories</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Layer Switcher */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+              <div className="flex">
+                {Object.entries(TILE_LAYERS).map(([key, layer]) => (
+                  <button
+                    key={key}
+                    onClick={() => switchTileLayer(key)}
+                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                      currentTileLayer === key
+                        ? 'bg-blue-600 text-white'
+                        : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                    title={`Switch to ${layer.name}`}
+                  >
+                    {layer.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Side Controls */}
+          <div className="absolute top-4 right-4 z-40 flex flex-col space-y-2">
+            {/* Zoom Controls */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+              <div className="flex flex-col">
+                <button
+                  onClick={handleZoomIn}
+                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors border-b border-slate-200"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleZoomOut}
+                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors border-b border-slate-200"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <button
+                  onClick={handleResetView}
+                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                  title="Reset View"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Clustering Toggle */}
+            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+              <button
+                onClick={toggleClustering}
+                className={`p-2 transition-colors ${
+                  showClusters
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                }`}
+                title={
+                  showClusters ? 'Disable Clustering' : 'Enable Clustering'
+                }
+              >
+                {showClusters ? (
+                  <Eye className="h-4 w-4" />
+                ) : (
+                  <EyeOff className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Bottom Status Bar */}
+          {points.length > 0 && (
+            <div className="absolute bottom-4 left-4 right-4 z-40">
+              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-2 border border-white/20">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-1">
+                      <Navigation className="h-4 w-4 text-slate-500" />
+                      <span className="text-slate-600">
+                        {
+                          TILE_LAYERS[
+                            currentTileLayer as keyof typeof TILE_LAYERS
+                          ].name
+                        }{' '}
+                        View
+                      </span>
+                    </div>
+                    <div className="h-4 w-px bg-slate-300" />
+                    <div className="text-slate-600">
+                      {showClusters ? 'Clustered' : 'Individual'} markers
+                    </div>
+                  </div>
+                  <div className="text-slate-500">
+                    Click markers for details • Drag to explore
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {points.length === 0 && !isMapLoading && (
+            <div className="absolute inset-0 bg-slate-100/50 z-30 flex items-center justify-center">
+              <div className="bg-white p-8 rounded-lg shadow-lg text-center space-y-4 max-w-md mx-4">
+                <div className="p-3 bg-slate-100 rounded-full w-fit mx-auto">
+                  <MapPin className="h-8 w-8 text-slate-400" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-medium text-slate-800">
+                    No locations to display
+                  </h3>
+                  <p className="text-sm text-slate-600">
+                    Add some geographic data to see points on the map.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
 };
 
 export default MapDisplay;

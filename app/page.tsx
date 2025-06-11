@@ -3,7 +3,17 @@
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/Input';
-import { AlertCircle, Loader2 } from 'lucide-react';
+import {
+  AlertCircle,
+  Loader2,
+  Map,
+  Search,
+  Filter,
+  Info,
+  BarChart3,
+  Download,
+  RefreshCw,
+} from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -11,6 +21,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/Select';
+import { Button } from '@/components/Button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/Tooltip';
 
 const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
   ssr: false,
@@ -160,6 +177,102 @@ export default function HomePage() {
     setSelectedPointId(pointId);
   };
 
+  const handleRefresh = () => {
+    startTransition(async () => {
+      setError(null);
+      try {
+        const res = await fetch('/points.json?' + new Date().getTime());
+        const raw = await res.json();
+        let idCounter = 0;
+        const processed: Point[] = [];
+        for (const row of raw) {
+          const coordString =
+            row['Coördinaten\nCoordinates'] ||
+            row['Coördinaten/Coordinates'] ||
+            row['Coördinaten\nCoordinates'] ||
+            row['Coördinaten'] ||
+            row['Coordinates'];
+          const originalName =
+            row['Oorspr. naam op de kaart\nOriginal name on the map'] ||
+            row['Oorspr. naam op de kaart/Original name on the map'] ||
+            row['Oorspr. naam op de kaart'] ||
+            row['Original name on the map'] ||
+            'N/A';
+          const category =
+            row['Soortnaam\nCategory'] ||
+            row['Soortnaam/Category'] ||
+            row['Soortnaam'] ||
+            row['Category'] ||
+            'Unknown';
+          if (
+            !coordString ||
+            coordString.trim() === '' ||
+            coordString === '-' ||
+            coordString === '??'
+          )
+            continue;
+          const coordParts = coordString
+            .split('+')
+            .map((s: string) => s.trim());
+          for (const part of coordParts) {
+            if (part === '' || part === '-' || part === '??') continue;
+            const parsedLocation = parseSingleCoordinateEntry(part);
+            if (parsedLocation) {
+              processed.push({
+                id: `point-${idCounter++}`,
+                latitude: parsedLocation.latitude,
+                longitude: parsedLocation.longitude,
+                originalName,
+                category: category || 'Unknown',
+                originalCoords: part,
+                rowData: row,
+              });
+            }
+          }
+        }
+        setPoints(processed);
+      } catch (err) {
+        setError('Failed to load points.json');
+        setPoints([]);
+      }
+    });
+  };
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setSelectedCategoryFilter('');
+    setSelectedPointId(null);
+  };
+
+  const handleExportVisible = () => {
+    const dataToExport = filteredPoints.map(point => ({
+      name: point.originalName,
+      category: point.category,
+      latitude: point.latitude,
+      longitude: point.longitude,
+      originalCoords: point.originalCoords
+    }));
+
+    const csvContent = [
+      ['Name', 'Category', 'Latitude', 'Longitude', 'Original Coordinates'],
+      ...dataToExport.map(point => [
+        point.name,
+        point.category,
+        point.latitude.toString(),
+        point.longitude.toString(),
+        point.originalCoords
+      ])
+    ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'filtered-coordinates.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   useEffect(() => {
     if (selectedPointId && tableBodyRef.current) {
       const rowElement = tableBodyRef.current.querySelector(
@@ -209,157 +322,279 @@ export default function HomePage() {
   }, [points, selectedCategoryFilter, searchQuery]);
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
-      <main className="flex-grow flex flex-row overflow-hidden">
-        {/* Left Panel */}
-        <div className="w-2/5 p-4 flex flex-col space-y-4 border-r border-gray-300 bg-white overflow-hidden">
-          <div className="flex-shrink-0 space-y-3 mb-4 p-3 bg-slate-50 rounded-md border border-slate-200">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label
-                  htmlFor="search-table"
-                  className="block text-sm font-medium text-slate-600 mb-1"
-                >
-                  Search Table
-                </label>
-                <Input
-                  id="search-table"
-                  type="text"
-                  placeholder="Search all fields..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full"
-                  disabled={isPending || points.length === 0}
-                />
+    <TooltipProvider>
+      <div className="flex flex-col h-screen overflow-hidden bg-gradient-to-br from-slate-50 to-slate-100">
+        {/* Header */}
+        <header className="bg-white border-b border-slate-200 shadow-sm px-6 py-4 flex-shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Map className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <label
-                  htmlFor="category-filter"
-                  className="block text-sm font-medium text-slate-600 mb-1"
-                >
-                  Filter by Category
-                </label>
-                <Select
-                  value={selectedCategoryFilter}
-                  onValueChange={(value) => setSelectedCategoryFilter(value)}
-                  disabled={isPending || points.length === 0}
-                >
-                  <SelectTrigger id="category-filter" className="w-full">
-                    <SelectValue placeholder="All Categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
-                    {uniqueCategoriesForFilter.map((category) => (
-                      <SelectItem key={category} value={category}>
-                        {category}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <h1 className="text-xl font-bold text-slate-800">Coordinate Explorer</h1>
+                <p className="text-sm text-slate-600">Historical Atlas Geographic Data Visualization</p>
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {points.length > 0 && (
+                <div className="hidden sm:flex items-center space-x-4 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg">
+                  <div className="flex items-center space-x-1">
+                    <BarChart3 className="h-4 w-4" />
+                    <span>{points.length} total points</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <Filter className="h-4 w-4" />
+                    <span>{filteredPoints.length} visible</span>
+                  </div>
+                </div>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRefresh}
+                    disabled={isPending}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${isPending ? 'animate-spin' : ''}`} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Refresh data</TooltipContent>
+              </Tooltip>
+            </div>
+          </div>
+        </header>
+
+        <main className="flex-grow flex flex-row overflow-hidden">
+          {/* Left Panel */}
+          <div className="w-2/5 flex flex-col bg-white border-r border-slate-200 shadow-sm">
+            {/* Controls Section */}
+            <div className="flex-shrink-0 p-4 bg-slate-50 border-b border-slate-200">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-slate-800 flex items-center">
+                    <Search className="h-5 w-5 mr-2 text-slate-600" />
+                    Search & Filter
+                  </h2>
+                  {(searchQuery || selectedCategoryFilter) && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleClearFilters}
+                      className="text-slate-600 hover:text-slate-800"
+                    >
+                      Clear all
+                    </Button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="search-table" className="text-sm font-medium text-slate-700">
+                      Search locations
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                      <Input
+                        id="search-table"
+                        type="text"
+                        placeholder="Search names, categories, coordinates..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                        disabled={isPending || points.length === 0}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label htmlFor="category-filter" className="text-sm font-medium text-slate-700">
+                      Filter by category
+                    </label>
+                    <Select
+                      value={selectedCategoryFilter}
+                      onValueChange={(value) => setSelectedCategoryFilter(value)}
+                      disabled={isPending || points.length === 0}
+                    >
+                      <SelectTrigger id="category-filter">
+                        <SelectValue placeholder="All categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All categories</SelectItem>
+                        {uniqueCategoriesForFilter.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {filteredPoints.length > 0 && (
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-200">
+                    <div className="text-sm text-slate-600">
+                      Showing <span className="font-medium text-slate-800">{filteredPoints.length}</span> of <span className="font-medium text-slate-800">{points.length}</span> locations
+                    </div>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleExportVisible}
+                          disabled={filteredPoints.length === 0}
+                        >
+                          <Download className="h-4 w-4 mr-1" />
+                          Export
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export visible data as CSV</TooltipContent>
+                    </Tooltip>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Data Table Section */}
+            <div className="flex-grow overflow-hidden flex flex-col">
+              {error && (
+                <div className="p-4 bg-red-50 border-l-4 border-red-400 m-4">
+                  <div className="flex items-center">
+                    <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+                    <div>
+                      <h3 className="text-sm font-medium text-red-800">Error loading data</h3>
+                      <p className="text-sm text-red-700 mt-1">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!error && isPending && points.length === 0 && (
+                <div className="flex-grow flex items-center justify-center">
+                  <div className="text-center space-y-3">
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-600" />
+                    <div className="text-slate-600">Loading geographic data...</div>
+                    <div className="text-sm text-slate-500">This may take a moment</div>
+                  </div>
+                </div>
+              )}
+
+              {!error && points.length === 0 && !isPending && (
+                <div className="flex-grow flex items-center justify-center p-6">
+                  <div className="text-center space-y-3">
+                    <div className="p-3 bg-yellow-100 rounded-full w-fit mx-auto">
+                      <AlertCircle className="h-8 w-8 text-yellow-600" />
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-medium text-slate-800">No data found</h3>
+                      <p className="text-sm text-slate-600">No geographic coordinates were found in the data file.</p>
+                      <p className="text-xs text-slate-500">Check that the file format and column names are correct.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!error && points.length > 0 && !isPending && (
+                <>
+                  {filteredPoints.length === 0 ? (
+                    <div className="flex-grow flex items-center justify-center p-6">
+                      <div className="text-center space-y-3">
+                        <div className="p-3 bg-blue-100 rounded-full w-fit mx-auto">
+                          <Search className="h-8 w-8 text-blue-600" />
+                        </div>
+                        <div className="space-y-1">
+                          <h3 className="text-lg font-medium text-slate-800">No matches found</h3>
+                          <p className="text-sm text-slate-600">Try adjusting your search or filter criteria.</p>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                          Clear filters
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex-grow overflow-auto">
+                      <table className="min-w-full divide-y divide-slate-200">
+                        <thead className="bg-slate-50 sticky top-0 z-10">
+                          <tr>
+                            {tableHeaders.map((header) => (
+                              <th
+                                key={header}
+                                className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider"
+                              >
+                                {header.replace(/\n/g, ' ')}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody ref={tableBodyRef} className="bg-white divide-y divide-slate-200">
+                          {filteredPoints.map((point) => (
+                            <tr
+                              key={point.id}
+                              data-point-id={point.id}
+                              onClick={() => handlePointSelect(point.id)}
+                              className={`cursor-pointer transition-colors duration-150 hover:bg-blue-50 ${
+                                selectedPointId === point.id
+                                  ? 'bg-blue-100 ring-2 ring-blue-400 ring-inset'
+                                  : ''
+                              }`}
+                            >
+                              {tableHeaders.map((header) => {
+                                let cellValue: string | number = '';
+                                if (header === 'Computed Latitude') {
+                                  cellValue = point.latitude.toFixed(4);
+                                } else if (header === 'Computed Longitude') {
+                                  cellValue = point.longitude.toFixed(4);
+                                } else if (header === 'Parsed Coordinate Segment') {
+                                  cellValue = point.originalCoords;
+                                } else {
+                                  cellValue = point.rowData[header] || '';
+                                }
+                                return (
+                                  <td
+                                    key={header}
+                                    className="px-4 py-3 text-sm text-slate-900 max-w-[200px] truncate"
+                                    title={String(cellValue)}
+                                  >
+                                    {String(cellValue)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
-          <div className="flex-grow overflow-hidden flex flex-col">
-            {!error &&
-              (points.length > 0 || searchQuery || selectedCategoryFilter) &&
-              !isPending && (
-                <>
-                  <h3 className="text-md font-semibold mb-2 text-slate-700">
-                    Displaying {filteredPoints.length} (of {points.length}{' '}
-                    total)
-                  </h3>
-                  <div className="flex-grow overflow-auto text-sm border border-gray-200 rounded">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50 sticky top-0 z-10">
-                        <tr>
-                          {tableHeaders.map((header) => (
-                            <th
-                              key={header}
-                              className="px-3 py-2 text-left font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap"
-                            >
-                              {header.replace(/\n/g, ' ')}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody
-                        ref={tableBodyRef}
-                        className="bg-white divide-y divide-gray-200"
-                      >
-                        {filteredPoints.map((point) => (
-                          <tr
-                            key={point.id}
-                            data-point-id={point.id}
-                            onClick={() => handlePointSelect(point.id)}
-                            className={`cursor-pointer hover:bg-slate-50 ${
-                              selectedPointId === point.id
-                                ? 'bg-slate-200 ring-2 ring-slate-400'
-                                : ''
-                            }`}
-                          >
-                            {tableHeaders.map((header) => {
-                              let cellValue: string | number = '';
-                              if (header === 'Computed Latitude') {
-                                cellValue = point.latitude.toFixed(4);
-                              } else if (header === 'Computed Longitude') {
-                                cellValue = point.longitude.toFixed(4);
-                              } else if (
-                                header === 'Parsed Coordinate Segment'
-                              ) {
-                                cellValue = point.originalCoords;
-                              } else {
-                                cellValue = point.rowData[header] || '';
-                              }
-                              return (
-                                <td
-                                  key={header}
-                                  className="px-3 py-1.5 whitespace-nowrap truncate max-w-[200px]"
-                                  title={String(cellValue)}
-                                >
-                                  {String(cellValue)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+          {/* Map Section */}
+          <div className="flex-grow h-full relative">
+            {points.length > 0 && filteredPoints.length === 0 && !isPending && (
+              <div className="absolute inset-0 bg-slate-100 bg-opacity-75 z-10 flex items-center justify-center">
+                <div className="bg-white p-6 rounded-lg shadow-lg text-center space-y-3">
+                  <Info className="h-8 w-8 text-blue-600 mx-auto" />
+                  <div>
+                    <h3 className="text-lg font-medium text-slate-800">Map filtered</h3>
+                    <p className="text-sm text-slate-600">No locations match your current filters.</p>
                   </div>
-                  {points.length > 0 &&
-                    filteredPoints.length === 0 &&
-                    !isPending && (
-                      <div className="p-3 mt-2 bg-sky-100 text-sky-700 rounded flex-grow flex items-center justify-center text-sm">
-                        <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                        No data matches your current search or filter criteria.
-                      </div>
-                    )}
-                </>
-              )}
-            {!error && points.length === 0 && !isPending && (
-              <div className="p-3 bg-yellow-100 text-yellow-700 rounded flex-grow flex items-center justify-center text-sm">
-                <AlertCircle className="h-5 w-5 mr-2 flex-shrink-0" />
-                No points found in points.json. Check file format and column
-                names.
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    Show all locations
+                  </Button>
+                </div>
               </div>
             )}
-            {isPending && points.length === 0 && (
-              <div className="p-3 text-slate-600 rounded flex-grow flex items-center justify-center text-sm">
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading data
-                for table...
-              </div>
-            )}
+            <MapDisplay
+              points={filteredPoints}
+              selectedPointId={selectedPointId}
+              onPointSelect={handlePointSelect}
+            />
           </div>
-        </div>
-
-        <div className="flex-grow h-full bg-gray-200">
-          <MapDisplay
-            points={filteredPoints}
-            selectedPointId={selectedPointId}
-            onPointSelect={handlePointSelect}
-          />
-        </div>
-      </main>
-    </div>
+        </main>
+      </div>
+    </TooltipProvider>
   );
 }
