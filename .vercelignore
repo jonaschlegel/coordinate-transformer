@@ -1,0 +1,3 @@
+# Ignore Vercel deployment
+.vercel
+deployment.vercel.app

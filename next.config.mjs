@@ -10,6 +10,8 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'export',
+  basePath: '/coordinate-transformer',
+  assetPrefix: '/coordinate-transformer/',
 };
 
 export default nextConfig;
