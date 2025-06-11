@@ -12,7 +12,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-// Dynamically import MapDisplay to avoid SSR issues with Leaflet
 const MapDisplay = dynamic(() => import('@/components/map-display'), {
   ssr: false,
   loading: () => (
@@ -85,7 +84,6 @@ export default function HomePage() {
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<string>('');
 
-  // Load points from public/points.json on mount
   useEffect(() => {
     startTransition(async () => {
       setError(null);
@@ -146,15 +144,12 @@ export default function HomePage() {
 
   const tableHeaders = useMemo(() => {
     if (points.length === 0) return [];
-    // Define our computed/special columns
     const specialHeaders = [
       'Computed Latitude',
       'Computed Longitude',
       'Parsed Coordinate Segment',
     ];
-    // Get all original headers from the first point's rowData
     const originalCsvHeaders = Object.keys(points[0].rowData);
-    // Concatenate with original CSV headers first, then special ones
     return [...originalCsvHeaders, ...specialHeaders];
   }, [points]);
 
@@ -175,14 +170,13 @@ export default function HomePage() {
   }, [selectedPointId]);
 
   const uniqueCategoriesForFilter = useMemo(() => {
-    if (points.length === 0) return []; // Use original points to populate all possible categories
+    if (points.length === 0) return [];
     const categories = new Set(points.map((point) => point.category));
     const sortedCategories = Array.from(categories).sort((a, b) => {
       if (a === 'Unknown') return 1;
       if (b === 'Unknown') return -1;
       return a.localeCompare(b);
     });
-    // We will add "All Categories" directly in the Select component
     return sortedCategories;
   }, [points]);
 
@@ -190,7 +184,6 @@ export default function HomePage() {
     let currentPoints = points;
 
     if (selectedCategoryFilter && selectedCategoryFilter !== 'all') {
-      // Check against "all"
       currentPoints = currentPoints.filter(
         (point) => point.category === selectedCategoryFilter,
       );
@@ -214,12 +207,6 @@ export default function HomePage() {
 
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-gray-100">
-      <header className="bg-slate-800 text-white shadow-md flex-shrink-0">
-        <div className="px-4 py-3">
-          <h1 className="text-2xl font-bold">Coordinate Mapper</h1>
-        </div>
-      </header>
-
       <main className="flex-grow flex flex-row overflow-hidden">
         {/* Left Panel */}
         <div className="w-2/5 p-4 flex flex-col space-y-4 border-r border-gray-300 bg-white overflow-hidden">
@@ -251,7 +238,7 @@ export default function HomePage() {
                 </label>
                 <Select
                   value={selectedCategoryFilter}
-                  onValueChange={(value) => setSelectedCategoryFilter(value)} // value will be "" for "All Categories"
+                  onValueChange={(value) => setSelectedCategoryFilter(value)}
                   disabled={isPending || points.length === 0}
                 >
                   <SelectTrigger id="category-filter" className="w-full">
@@ -319,7 +306,6 @@ export default function HomePage() {
                               ) {
                                 cellValue = point.originalCoords;
                               } else {
-                                // This will now correctly access original CSV data first
                                 cellValue = point.rowData[header] || '';
                               }
                               return (
