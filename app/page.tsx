@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition, useMemo, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/components/Input';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import {
   Select,
@@ -10,9 +10,9 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/components/Select';
 
-const MapDisplay = dynamic(() => import('@/components/map-display'), {
+const MapDisplay = dynamic(() => import('@/components/MapDisplay'), {
   ssr: false,
   loading: () => (
     <div className="w-full h-full bg-gray-200 flex items-center justify-center">
