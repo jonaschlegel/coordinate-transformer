@@ -276,7 +276,6 @@ export default function HomePage() {
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
     } catch (err) {
       console.error('Failed to copy to clipboard:', err);
     }
@@ -400,7 +399,6 @@ export default function HomePage() {
       });
     }
 
-    // Apply sorting
     if (sortConfig) {
       currentPoints = [...currentPoints].sort((a, b) => {
         let aValue: any;
@@ -420,14 +418,12 @@ export default function HomePage() {
           bValue = b.rowData[sortConfig.key] || '';
         }
 
-        // Handle numeric sorting
         if (typeof aValue === 'number' && typeof bValue === 'number') {
           return sortConfig.direction === 'asc'
             ? aValue - bValue
             : bValue - aValue;
         }
 
-        // Handle string sorting
         const aStr = String(aValue).toLowerCase();
         const bStr = String(bValue).toLowerCase();
 

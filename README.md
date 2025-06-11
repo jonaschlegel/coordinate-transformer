@@ -49,22 +49,6 @@ This web application displays points from a CSV file on an interactive map. The 
 2. In your repository settings, set GitHub Pages to deploy from the `gh-pages` branch.
 3. Your site will be available at `https://jonaschlegel.github.io/coordinate-transformer/`.
 
-## Troubleshooting: GitHub Pages Deployment
-
-If your GitHub Actions workflow fails to deploy with a permissions error, you may need to create the `gh-pages` branch manually. Run the following commands in your terminal:
-
-```sh
-git checkout main
-git pull
-git checkout --orphan gh-pages
-git rm -rf .
-git commit --allow-empty -m "Initial gh-pages commit"
-git push origin gh-pages
-git checkout main
-```
-
-After this, push to `main` again and the workflow should deploy successfully.
-
 ---
 
 For any changes to the data, update `grote-atlas-I-index.csv` and push to `main`. The site will update automatically.

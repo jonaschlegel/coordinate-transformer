@@ -87,16 +87,19 @@ const TILE_LAYERS = {
 const DEFAULT_FALLBACK_COLOR = '#333333';
 
 const createCategoryIcon = (color: string, isSelected?: boolean) => {
-  const borderStyle = isSelected ? '3px solid #0ea5e9' : '1px solid white';
-  const size = isSelected ? '16px' : '12px';
+  const borderStyle = isSelected ? '3px solid #d97706' : '2px solid #fef3c7'; // Cartographic amber colors
+  const size = isSelected ? '18px' : '14px';
   const shadow = isSelected
-    ? '0 0 8px rgba(14, 165, 233, 0.7)'
-    : '0 0 2px rgba(0,0,0,0.5)';
+    ? '0 0 12px rgba(217, 119, 6, 0.4), 0 2px 8px rgba(101, 79, 60, 0.3)'
+    : '0 2px 6px rgba(101, 79, 60, 0.2), 0 1px 3px rgba(101, 79, 60, 0.1)';
+
   return L.divIcon({
-    html: `<span style="background-color: ${color}; width: ${size}; height: ${size}; border-radius: 50%; display: inline-block; border: ${borderStyle}; box-shadow: ${shadow}; transition: all 0.2s ease-in-out;"></span>`,
+    html: `<span style="background-color: ${color}; width: ${size}; height: ${size}; border-radius: 50%; display: inline-block; border: ${borderStyle}; box-shadow: ${shadow}; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: ${
+      isSelected ? 'scale(1.1)' : 'scale(1)'
+    };"></span>`,
     className: `custom-div-icon ${isSelected ? 'selected-marker-icon' : ''}`,
-    iconSize: isSelected ? [16, 16] : [12, 12],
-    iconAnchor: isSelected ? [8, 8] : [6, 6],
+    iconSize: isSelected ? [18, 18] : [14, 14],
+    iconAnchor: isSelected ? [9, 9] : [7, 7],
   });
 };
 
@@ -291,15 +294,70 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       attribution: initialLayer.attribution,
     }).addTo(mapInstance.current);
 
-    // Initialize marker cluster group
+    // Initialize marker cluster group with enhanced styling
     // @ts-ignore
     markerClusterGroup.current = L.markerClusterGroup({
       chunkedLoading: true,
-      maxClusterRadius: 60,
+      maxClusterRadius: 50, // Slightly smaller for better visual grouping
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       spiderfyOnMaxZoom: true,
       removeOutsideVisibleBounds: true,
+      animate: true,
+      animateAddingMarkers: true,
+      disableClusteringAtZoom: 18, 
+      iconCreateFunction: function (cluster: any) {
+        const count = cluster.getChildCount();
+        let size = 'small';
+        let className = 'marker-cluster-small';
+
+        if (count < 10) {
+          size = 'small';
+          className = 'marker-cluster-small';
+        } else if (count < 100) {
+          size = 'medium';
+          className = 'marker-cluster-medium';
+        } else {
+          size = 'large';
+          className = 'marker-cluster-large';
+        }
+
+        const iconSize = size === 'small' ? 40 : size === 'medium' ? 50 : 60;
+        const fontSize =
+          size === 'small' ? '12px' : size === 'medium' ? '14px' : '16px';
+
+        return new L.DivIcon({
+          html: `<div style="
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 50%, #e2e8f0 100%);
+            border: 3px solid #475569;
+            border-radius: 50%;
+            width: ${iconSize}px;
+            height: ${iconSize}px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: ${fontSize};
+            color: #1e293b;
+            box-shadow: 0 6px 20px rgba(71, 85, 105, 0.15), 0 3px 10px rgba(71, 85, 105, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', system-ui, sans-serif;
+            position: relative;
+          " class="cartographic-cluster">
+            <div style="
+              position: absolute;
+              inset: 3px;
+              background: linear-gradient(135deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 100%);
+              border-radius: 50%;
+              pointer-events: none;
+            "></div>
+            <span style="position: relative; z-index: 1; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">${count}</span>
+          </div>`,
+          className: `marker-cluster ${className}`,
+          iconSize: new L.Point(iconSize, iconSize),
+          iconAnchor: [iconSize / 2, iconSize / 2],
+        });
+      },
     });
 
     mapInstance.current.addLayer(markerClusterGroup.current);
@@ -335,28 +393,36 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           'div',
           'info legend leaflet-control-layers leaflet-control-layers-expanded',
         );
-        div.style.backgroundColor = 'rgba(255,255,255,0.9)';
-        div.style.padding = '6px 10px';
-        div.style.borderRadius = '5px';
-        div.style.boxShadow = '0 0 10px rgba(0,0,0,0.2)';
-        div.style.maxWidth = '180px';
+        // Enhanced cartographic styling for legend
+        div.style.backgroundColor = 'rgba(250, 250, 249, 0.95)';
+        div.style.backdropFilter = 'blur(8px)';
+        div.style.padding = '12px 16px';
+        div.style.borderRadius = '12px';
+        div.style.border = '1px solid rgba(231, 229, 228, 0.6)';
+        div.style.boxShadow =
+          '0 4px 12px rgba(101, 79, 60, 0.15), 0 2px 6px rgba(101, 79, 60, 0.1)';
+        div.style.maxWidth = '200px';
+        div.style.fontFamily = "'Inter', system-ui, sans-serif";
 
         const header = L.DomUtil.create('div', '', div);
         header.style.cursor = 'pointer';
-        header.style.marginBottom = isLegendOpen ? '6px' : '0';
-        header.style.fontWeight = 'bold';
-        header.style.fontSize = '13px';
+        header.style.marginBottom = isLegendOpen ? '8px' : '0';
+        header.style.fontWeight = '600';
+        header.style.fontSize = '14px';
         header.style.display = 'flex';
         header.style.justifyContent = 'space-between';
         header.style.alignItems = 'center';
-        header.innerHTML = `<span>Legend</span><span style="font-size: 1.1em;">${
+        header.style.color = '#57534e'; // stone-600
+        header.style.letterSpacing = '0.025em';
+        header.innerHTML = `<span>Categories</span><span style="font-size: 1.1em; color: #d97706; transition: transform 0.2s ease;">${
           isLegendOpen ? '&#9660;' : '&#9654;'
         }</span>`;
 
         const content = L.DomUtil.create('div', '', div);
-        content.style.maxHeight = '120px';
+        content.style.maxHeight = '160px';
         content.style.overflowY = 'auto';
         content.style.display = isLegendOpen ? 'block' : 'none';
+        content.style.scrollbarWidth = 'thin';
 
         L.DomEvent.disableClickPropagation(div);
         L.DomEvent.disableScrollPropagation(div);
@@ -364,12 +430,16 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           e.stopPropagation();
           setIsLegendOpen(!isLegendOpen);
         };
+
         if (isLegendOpen) {
           let legendHtml = '';
           sortedCategories.forEach((category) => {
             const color =
               activeCategoryStyles[category]?.color || DEFAULT_FALLBACK_COLOR;
-            legendHtml += `<div style="display: flex; align-items: center; margin-bottom: 3px;"><span style="background-color: ${color}; width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; border: 1px solid #ccc; flex-shrink: 0; box-shadow: 0 0 1px rgba(0,0,0,0.3);"></span><span style="font-size: 11px; word-break: break-word;">${category}</span></div>`;
+            legendHtml += `<div style="display: flex; align-items: center; margin-bottom: 6px; padding: 4px 0; transition: background-color 0.2s ease; border-radius: 6px;" onmouseover="this.style.backgroundColor='rgba(245, 245, 244, 0.5)'" onmouseout="this.style.backgroundColor='transparent'">
+              <span style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; border: 2px solid #fef3c7; flex-shrink: 0; box-shadow: 0 2px 4px rgba(101, 79, 60, 0.2);"></span>
+              <span style="font-size: 12px; word-break: break-word; color: #44403c; font-weight: 500;">${category}</span>
+            </div>`;
           });
           content.innerHTML = legendHtml;
         }
@@ -403,18 +473,40 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       const marker = L.marker([point.latitude, point.longitude], { icon });
       marker.on('click', () => onPointSelect(point.id));
       marker.bindPopup(`
-      <div style="font-family: sans-serif; font-size: 13px; max-width: 250px;">
-        <strong style="display: block; margin-bottom: 3px; font-size: 14px;">${
-          point.originalName
-        }</strong>
-        <strong>Category:</strong> ${point.category}<br>
-        <strong>Original:</strong> ${point.originalCoords}<br>
-        <strong>Coords:</strong> ${point.latitude.toFixed(
-          4,
-        )}, ${point.longitude.toFixed(4)}
+      <div style="font-family: 'Inter', system-ui, sans-serif; font-size: 14px; max-width: 280px; color: #44403c;">
+        <div style="margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #e7e5e4;">
+          <strong style="display: block; margin-bottom: 4px; font-size: 16px; color: #1c1917; font-weight: 600; line-height: 1.3;">${
+            point.originalName
+          }</strong>
+        </div>
+        <div style="space-y: 6px;">
+          <div style="margin-bottom: 6px;">
+            <strong style="color: #78716c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Category:</strong>
+            <span style="margin-left: 6px; color: #57534e; font-weight: 500;">${
+              point.category
+            }</span>
+          </div>
+          <div style="margin-bottom: 6px;">
+            <strong style="color: #78716c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Original:</strong>
+            <span style="margin-left: 6px; color: #57534e; font-family: 'Source Code Pro', monospace; font-size: 13px; background: #f5f5f4; padding: 2px 4px; border-radius: 3px;">${
+              point.originalCoords
+            }</span>
+          </div>
+          <div style="margin-bottom: 0;">
+            <strong style="color: #78716c; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;">Coordinates:</strong>
+            <span style="margin-left: 6px; color: #57534e; font-family: 'Source Code Pro', monospace; font-size: 13px; background: #f5f5f4; padding: 2px 4px; border-radius: 3px;">${point.latitude.toFixed(
+              4,
+            )}, ${point.longitude.toFixed(4)}</span>
+          </div>
+        </div>
       </div>
     `);
-      marker.bindTooltip(`${point.originalName} (${point.category})`);
+      marker.bindTooltip(`${point.originalName} (${point.category})`, {
+        direction: 'top',
+        offset: [0, -10],
+        className: 'cartographic-tooltip',
+        opacity: 0.95,
+      });
       markersRef.current[point.id] = marker;
       leafletMarkers.push(marker);
     });
@@ -508,18 +600,18 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     <div className="relative w-full h-full">
       {/* Loading Overlay */}
       {isMapLoading && (
-        <div className="absolute inset-0 bg-slate-100 z-50 flex items-center justify-center">
-          <div className="text-center space-y-4">
+        <div className="absolute inset-0 bg-gradient-to-br from-stone-100 via-amber-50 to-stone-100 z-50 flex items-center justify-center">
+          <div className="text-center space-y-6">
             <div className="relative">
-              <Globe className="h-12 w-12 text-blue-600 mx-auto animate-pulse" />
-              <Loader2 className="absolute inset-0 h-12 w-12 text-blue-400 animate-spin" />
+              <Globe className="h-16 w-16 text-amber-600 mx-auto animate-pulse" />
+              <Loader2 className="absolute inset-0 h-16 w-16 text-amber-500 animate-spin" />
             </div>
-            <div className="space-y-1">
-              <h3 className="text-lg font-medium text-slate-800">
-                Initializing Map
+            <div className="space-y-2">
+              <h3 className="text-xl font-serif font-semibold text-stone-800 tracking-wide">
+                Initializing Cartographic View
               </h3>
-              <p className="text-sm text-slate-600">
-                Loading geographic visualization...
+              <p className="text-sm text-stone-600 font-medium">
+                Loading geographic visualization system...
               </p>
             </div>
           </div>
@@ -533,38 +625,38 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       {isMapInitialized && !isMapLoading && (
         <>
           {/* Top Controls Bar */}
-          <div className="absolute top-4 left-4 z-40 flex items-center space-x-2">
+          <div className="absolute top-4 left-4 z-40 flex items-center space-x-3">
             {/* Map Stats */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-3 py-2 border border-white/20">
-              <div className="flex items-center space-x-4 text-sm">
-                <div className="flex items-center space-x-1">
-                  <MapPin className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium text-slate-700">
+            <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow px-4 py-3 border border-stone-200/60">
+              <div className="flex items-center space-x-6 text-sm">
+                <div className="flex items-center space-x-2">
+                  <MapPin className="h-4 w-4 text-amber-700" />
+                  <span className="font-semibold text-stone-700">
                     {mapStats.visiblePoints}
                   </span>
-                  <span className="text-slate-500">points</span>
+                  <span className="text-stone-500 font-medium">points</span>
                 </div>
-                <div className="flex items-center space-x-1">
-                  <Layers className="h-4 w-4 text-emerald-600" />
-                  <span className="font-medium text-slate-700">
+                <div className="flex items-center space-x-2">
+                  <Layers className="h-4 w-4 text-amber-700" />
+                  <span className="font-semibold text-stone-700">
                     {mapStats.categories}
                   </span>
-                  <span className="text-slate-500">categories</span>
+                  <span className="text-stone-500 font-medium">categories</span>
                 </div>
               </div>
             </div>
 
             {/* Layer Switcher */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+            <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <div className="flex">
                 {Object.entries(TILE_LAYERS).map(([key, layer]) => (
                   <button
                     key={key}
                     onClick={() => switchTileLayer(key)}
-                    className={`px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`px-4 py-3 text-xs font-semibold transition-all duration-200 ${
                       currentTileLayer === key
-                        ? 'bg-blue-600 text-white'
-                        : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                        ? 'bg-amber-600 text-amber-50 shadow-sm'
+                        : 'text-stone-600 hover:text-stone-800 hover:bg-stone-100/60'
                     }`}
                     title={`Switch to ${layer.name}`}
                   >
@@ -576,27 +668,27 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           </div>
 
           {/* Right Side Controls */}
-          <div className="absolute top-4 right-4 z-40 flex flex-col space-y-2">
+          <div className="absolute top-4 right-4 z-40 flex flex-col space-y-3">
             {/* Zoom Controls */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+            <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <div className="flex flex-col">
                 <button
                   onClick={handleZoomIn}
-                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors border-b border-slate-200"
+                  className="p-3 text-stone-600 hover:text-stone-800 hover:bg-stone-100/60 transition-all duration-200 border-b border-stone-200/60"
                   title="Zoom In"
                 >
                   <ZoomIn className="h-4 w-4" />
                 </button>
                 <button
                   onClick={handleZoomOut}
-                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors border-b border-slate-200"
+                  className="p-3 text-stone-600 hover:text-stone-800 hover:bg-stone-100/60 transition-all duration-200 border-b border-stone-200/60"
                   title="Zoom Out"
                 >
                   <ZoomOut className="h-4 w-4" />
                 </button>
                 <button
                   onClick={handleResetView}
-                  className="p-2 text-slate-600 hover:text-slate-800 hover:bg-slate-50 transition-colors"
+                  className="p-3 text-stone-600 hover:text-stone-800 hover:bg-stone-100/60 transition-all duration-200"
                   title="Reset View"
                 >
                   <RotateCcw className="h-4 w-4" />
@@ -605,13 +697,13 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
             </div>
 
             {/* Clustering Toggle */}
-            <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg border border-white/20 overflow-hidden">
+            <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow border border-stone-200/60 overflow-hidden">
               <button
                 onClick={toggleClustering}
-                className={`p-2 transition-colors ${
+                className={`p-3 transition-all duration-200 ${
                   showClusters
-                    ? 'text-blue-600 bg-blue-50'
-                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50'
+                    ? 'text-amber-700 bg-amber-100/60'
+                    : 'text-stone-600 hover:text-stone-800 hover:bg-stone-100/60'
                 }`}
                 title={
                   showClusters ? 'Disable Clustering' : 'Enable Clustering'
@@ -629,12 +721,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
           {/* Bottom Status Bar */}
           {points.length > 0 && (
             <div className="absolute bottom-4 left-4 right-4 z-40">
-              <div className="bg-white/95 backdrop-blur-sm rounded-lg shadow-lg px-4 py-2 border border-white/20">
+              <div className="bg-stone-50/95 backdrop-blur-sm rounded-xl cartographic-shadow px-6 py-3 border border-stone-200/60">
                 <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-1">
-                      <Navigation className="h-4 w-4 text-slate-500" />
-                      <span className="text-slate-600">
+                  <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <Navigation className="h-4 w-4 text-amber-700" />
+                      <span className="text-stone-700 font-medium">
                         {
                           TILE_LAYERS[
                             currentTileLayer as keyof typeof TILE_LAYERS
@@ -643,12 +735,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
                         View
                       </span>
                     </div>
-                    <div className="h-4 w-px bg-slate-300" />
-                    <div className="text-slate-600">
+                    <div className="h-4 w-px bg-stone-300/80" />
+                    <div className="text-stone-600 font-medium">
                       {showClusters ? 'Clustered' : 'Individual'} markers
                     </div>
                   </div>
-                  <div className="text-slate-500">
+                  <div className="text-stone-500 font-medium">
                     Click markers for details • Drag to explore
                   </div>
                 </div>
@@ -658,17 +750,18 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
 
           {/* Empty State */}
           {points.length === 0 && !isMapLoading && (
-            <div className="absolute inset-0 bg-slate-100/50 z-30 flex items-center justify-center">
-              <div className="bg-white p-8 rounded-lg shadow-lg text-center space-y-4 max-w-md mx-4">
-                <div className="p-3 bg-slate-100 rounded-full w-fit mx-auto">
-                  <MapPin className="h-8 w-8 text-slate-400" />
+            <div className="absolute inset-0 bg-stone-100/60 z-30 flex items-center justify-center">
+              <div className="bg-stone-50/95 backdrop-blur-sm p-10 rounded-2xl cartographic-shadow text-center space-y-6 max-w-md mx-4 border border-stone-200/60">
+                <div className="p-4 bg-amber-100/60 rounded-2xl w-fit mx-auto">
+                  <MapPin className="h-10 w-10 text-amber-700" />
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium text-slate-800">
-                    No locations to display
+                <div className="space-y-3">
+                  <h3 className="text-xl font-serif font-semibold text-stone-800 tracking-wide">
+                    No Geographic Data
                   </h3>
-                  <p className="text-sm text-slate-600">
-                    Add some geographic data to see points on the map.
+                  <p className="text-sm text-stone-600 font-medium leading-relaxed">
+                    Add coordinate data to visualize locations on this
+                    cartographic interface.
                   </p>
                 </div>
               </div>

@@ -2,7 +2,6 @@ import fs from 'fs';
 import Papa from 'papaparse';
 
 const csv = fs.readFileSync('./grote-atlas-I-index.csv', 'utf8');
-// Fix header line breaks and double headers
 const fixedCsv = csv
   .replace(/\r?\n/g, '\n')
   .replace(/\n"/g, '"')

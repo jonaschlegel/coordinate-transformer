@@ -145,3 +145,84 @@ body {
     background: hsl(var(--primary) / 0.3);
   }
 }
+
+/* Custom Leaflet Styling */
+.cartographic-tooltip {
+  background: rgba(250, 250, 249, 0.95) !important;
+  border: 1px solid rgba(231, 229, 228, 0.6) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(101, 79, 60, 0.15),
+    0 2px 6px rgba(101, 79, 60, 0.1) !important;
+  color: #44403c !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 6px 10px !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+.cartographic-tooltip::before {
+  border-top-color: rgba(250, 250, 249, 0.95) !important;
+}
+
+.leaflet-popup-content-wrapper {
+  background: rgba(250, 250, 249, 0.98) !important;
+  border: 1px solid rgba(231, 229, 228, 0.6) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 24px rgba(101, 79, 60, 0.15),
+    0 4px 12px rgba(101, 79, 60, 0.1) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.leaflet-popup-tip {
+  background: rgba(250, 250, 249, 0.98) !important;
+  border: 1px solid rgba(231, 229, 228, 0.6) !important;
+  box-shadow: 0 2px 6px rgba(101, 79, 60, 0.1) !important;
+}
+
+.leaflet-popup-close-button {
+  color: #78716c !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  right: 8px !important;
+  top: 8px !important;
+  width: 24px !important;
+  height: 24px !important;
+  line-height: 22px !important;
+  border-radius: 6px !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-popup-close-button:hover {
+  background: rgba(231, 229, 228, 0.4) !important;
+  color: #57534e !important;
+}
+
+/* Enhanced cluster styling */
+.cartographic-cluster:hover {
+  transform: scale(1.05) !important;
+  box-shadow: 0 6px 16px rgba(101, 79, 60, 0.25),
+    0 3px 8px rgba(217, 119, 6, 0.15) !important;
+}
+
+.marker-cluster {
+  background-clip: padding-box !important;
+}
+
+.marker-cluster div {
+  margin: 2px !important;
+  background-clip: padding-box !important;
+}
+
+/* Custom marker animations */
+.custom-div-icon {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.custom-div-icon:hover {
+  transform: scale(1.1) !important;
+}
+
+.selected-marker-icon {
+  z-index: 1000 !important;
+}
