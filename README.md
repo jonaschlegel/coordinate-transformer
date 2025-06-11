@@ -15,7 +15,3 @@ This is a web application designed to help users upload CSV files containing coo
 2. Install dependencies using `pnpm install`.
 3. Start the development server with `pnpm run dev`.
 4. Open your browser and navigate to `http://localhost:3000`.
-
-## Deployment
-
-This application is deployed on Vercel. You can access the live version [here](https://vercel.com/jonaschlegels-projects/v0-coordinates-transfer).
