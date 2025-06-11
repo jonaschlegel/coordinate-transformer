@@ -102,7 +102,7 @@ async function processRawDataInChunks(raw, onProgress) {
         row['Soortnaam'] ||
         row['Category'] ||
         'Unknown';
-        row['Soortnaam/Category'] ||
+      row['Soortnaam/Category'] ||
         row['Soortnaam'] ||
         row['Category'] ||
         'Unknown';
