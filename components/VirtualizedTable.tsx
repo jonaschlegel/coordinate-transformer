@@ -33,7 +33,7 @@ interface RowProps {
   };
 }
 
-const COLUMN_WIDTH = 200; // px
+const COLUMN_WIDTH = 200;
 
 const TableRow = React.memo(({ index, style, data }: RowProps) => {
   const {
@@ -244,7 +244,6 @@ export const VirtualizedTable = React.memo<VirtualizedTableProps>(
 
     return (
       <div className="flex-grow">
-        {/* Table Header */}
         <div className="sticky top-0 z-10 bg-gradient-to-r from-stone-100/80 to-stone-200/60 border-b border-stone-200/60">
           <div className="flex">
             {headers.map((header) => {
@@ -290,7 +289,6 @@ export const VirtualizedTable = React.memo<VirtualizedTableProps>(
           </div>
         </div>
 
-        {/* Virtualized Table Body */}
         <List
           height={400}
           width={headers.length * COLUMN_WIDTH + 48}

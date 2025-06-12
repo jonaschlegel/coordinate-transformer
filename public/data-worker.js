@@ -1,7 +1,3 @@
-// Simple Web Worker for data processing in public folder
-// This avoids bundling issues with Next.js
-
-// Coordinate parsing cache
 const coordinateCache = new Map();
 
 function parseSingleCoordinateEntry(coordPairStr) {
@@ -15,7 +11,6 @@ function parseSingleCoordinateEntry(coordPairStr) {
     return null;
   }
 
-  // Check cache first
   if (coordinateCache.has(coordPairStr)) {
     return coordinateCache.get(coordPairStr);
   }
@@ -75,7 +70,6 @@ function dmsToDecimal(dmsStr) {
   return decimalDegrees;
 }
 
-// Enhanced async processing with progress reporting
 async function processRawDataInChunks(raw, onProgress) {
   const processed = [];
   let idCounter = 0;
@@ -134,27 +128,22 @@ async function processRawDataInChunks(raw, onProgress) {
       }
     }
 
-    // Report progress
     const progress = Math.min((i + chunkSize) / raw.length, 1);
     onProgress?.(progress);
 
-    // Yield control back to the event loop
     await new Promise((resolve) => setTimeout(resolve, 1));
   }
 
   return processed;
 }
 
-// Optimized filtering function for worker
 function optimizedFilter(points, categoryFilter, searchQuery, sortConfig) {
   let filtered = points;
 
-  // Category filter
   if (categoryFilter && categoryFilter !== '') {
     filtered = filtered.filter((point) => point.category === categoryFilter);
   }
 
-  // Search filter
   if (searchQuery && searchQuery.trim() !== '') {
     const query = searchQuery.toLowerCase().trim();
     filtered = filtered.filter(
@@ -165,7 +154,6 @@ function optimizedFilter(points, categoryFilter, searchQuery, sortConfig) {
     );
   }
 
-  // Sorting
   if (sortConfig) {
     filtered = [...filtered].sort((a, b) => {
       let aVal;
@@ -199,7 +187,6 @@ function optimizedFilter(points, categoryFilter, searchQuery, sortConfig) {
   return filtered;
 }
 
-// Message handler
 self.addEventListener('message', async (event) => {
   const { type, payload } = event.data;
 

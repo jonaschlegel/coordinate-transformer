@@ -113,16 +113,12 @@ export default function HomePage() {
     setError(null);
     setProcessingProgress(0);
     try {
-      // Use runtime check for environment instead of process.env for static export compatibility
-      // Note: Even in development, Next.js uses the basePath from next.config.mjs
       const isDevelopment =
         typeof window !== 'undefined' &&
         window.location.hostname === 'localhost';
-      
-      // Always use the basePath since it's configured in next.config.mjs for both dev and prod
+
       const assetBase = '/coordinate-transformer';
 
-      // Load the main points.json file directly
       const dataUrl = `${assetBase}/points.json`;
       console.log('Loading data from:', dataUrl);
 
@@ -133,17 +129,16 @@ export default function HomePage() {
         );
       }
 
-      setProcessingProgress(0.3); // 30% for fetch complete
+      setProcessingProgress(0.3);
 
       const allRaw = await res.json();
       console.log('Loaded raw data:', allRaw.length, 'records');
-      setProcessingProgress(0.6); // 60% for JSON parsing complete
+      setProcessingProgress(0.6);
 
       let processed;
       if (workerRef.current) {
-        processed = await workerRef.current.processRawData(
-          allRaw,
-          (progress) => setProcessingProgress(0.6 + progress * 0.4), // 60% to 100% for processing
+        processed = await workerRef.current.processRawData(allRaw, (progress) =>
+          setProcessingProgress(0.6 + progress * 0.4),
         );
       } else {
         processed = await processRawData(allRaw);
@@ -365,9 +360,7 @@ export default function HomePage() {
         </header>
 
         <main className="flex-grow flex flex-row overflow-hidden">
-          {/* Left Panel */}
           <div className="w-2/5 flex flex-col bg-stone-50/50 border-r border-stone-200/60 cartographic-shadow">
-            {/* Controls Section */}
             <div className="flex-shrink-0 p-4 bg-stone-100/40 border-b border-stone-200/60">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -504,7 +497,6 @@ export default function HomePage() {
                       </p>
                     </div>
 
-                    {/* Progress Bar */}
                     <div className="w-full space-y-2">
                       <div className="flex justify-between text-sm text-slate-500">
                         <span>Progress</span>
@@ -595,7 +587,6 @@ export default function HomePage() {
                     </div>
                   ) : (
                     <div className="flex-grow overflow-hidden flex flex-col">
-                      {/* Table Header with Controls */}
                       <div className="flex-shrink-0 px-4 py-3 bg-stone-50/80 border-b border-stone-200/60">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -631,7 +622,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Virtualized Table */}
                       <div
                         className="overflow-x-auto w-full"
                         style={{ WebkitOverflowScrolling: 'touch' }}
@@ -653,7 +643,6 @@ export default function HomePage() {
                         </div>
                       </div>
 
-                      {/* Table Footer */}
                       <div className="flex-shrink-0 px-4 py-3 bg-stone-100/60 border-t border-stone-200/60">
                         <div className="flex items-center justify-between text-sm text-stone-600">
                           <div className="flex items-center space-x-4">
@@ -675,7 +664,6 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Map Section */}
           <div className="flex-grow h-full relative">
             {points.length > 0 && filteredPoints.length === 0 && !isPending && (
               <div className="absolute inset-0 bg-slate-100 bg-opacity-75 z-10 flex items-center justify-center">

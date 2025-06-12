@@ -86,7 +86,6 @@ const TILE_LAYERS = {
 
 const DEFAULT_FALLBACK_COLOR = '#333333';
 
-// Memoized icon creation function
 const createCategoryIcon = (color: string, isSelected?: boolean) => {
   const borderStyle = isSelected ? '3px solid #d97706' : '2px solid #fef3c7';
   const size = isSelected ? '18px' : '14px';
@@ -139,7 +138,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     Record<string, { color: string }>
   >({});
 
-  // Optimized helper functions with useCallback
   const handleZoomIn = useCallback(() => {
     if (mapInstance.current) {
       mapInstance.current.zoomIn();
@@ -177,14 +175,12 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     ) {
       const layer = TILE_LAYERS[layerKey as keyof typeof TILE_LAYERS];
 
-      // Remove existing tile layers
       mapInstance.current.eachLayer((layer) => {
         if (layer instanceof L.TileLayer) {
           mapInstance.current?.removeLayer(layer);
         }
       });
 
-      // Add new tile layer
       L.tileLayer(layer.url, {
         attribution: layer.attribution,
       }).addTo(mapInstance.current);
@@ -198,11 +194,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       const markers = Object.values(markersRef.current);
 
       if (showClusters) {
-        // Remove from cluster group and add directly to map
         markerClusterGroup.current.clearLayers();
         markers.forEach((marker) => mapInstance.current?.addLayer(marker));
       } else {
-        // Remove from map and add to cluster group
         markers.forEach((marker) => mapInstance.current?.removeLayer(marker));
         markerClusterGroup.current.addLayers(markers);
       }
@@ -211,7 +205,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     }
   }, [showClusters]);
 
-  // Update map stats
   useEffect(() => {
     const totalPoints = points.length;
     const visiblePoints = Object.keys(markersRef.current).length;
@@ -220,7 +213,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     setMapStats({ totalPoints, visiblePoints, categories });
   }, [points, activeCategoryStyles]);
 
-  // Optimized category styles computation
   const activeCategoryStylesMemo = useMemo(() => {
     if (!points || points.length === 0) {
       return {};
@@ -268,7 +260,6 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
     return newStyles;
   }, [points]);
 
-  // Update activeCategoryStyles when memoized version changes
   useEffect(() => {
     setActiveCategoryStyles(activeCategoryStylesMemo);
   }, [activeCategoryStylesMemo]);
@@ -282,10 +273,9 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       center: [20, 0],
       zoom: 2,
       attributionControl: false,
-      zoomControl: false, // We'll add custom controls
+      zoomControl: false,
     });
 
-    // Add attribution control in bottom left
     L.control
       .attribution({
         prefix: '<a href="https://leafletjs.com">Leaflet</a>',
@@ -293,18 +283,16 @@ const MapDisplay: React.FC<MapDisplayProps> = ({
       })
       .addTo(mapInstance.current);
 
-    // Add initial tile layer
     const initialLayer =
       TILE_LAYERS[currentTileLayer as keyof typeof TILE_LAYERS];
     L.tileLayer(initialLayer.url, {
       attribution: initialLayer.attribution,
     }).addTo(mapInstance.current);
 
-    // Initialize marker cluster group with enhanced styling
     // @ts-ignore
     markerClusterGroup.current = L.markerClusterGroup({
       chunkedLoading: true,
-      maxClusterRadius: 50, // Slightly smaller for better visual grouping
+      maxClusterRadius: 50,
       showCoverageOnHover: false,
       zoomToBoundsOnClick: true,
       spiderfyOnMaxZoom: true,
