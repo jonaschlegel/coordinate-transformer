@@ -41,7 +41,7 @@ pnpm install
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000/coordinate-transformer](http://localhost:3000/coordinate-transformer) in your browser.
 
 ### Data Processing
 
