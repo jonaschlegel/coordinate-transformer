@@ -12,6 +12,9 @@ const nextConfig = {
   output: 'export',
   basePath: '/coordinate-transformer',
   assetPrefix: '/coordinate-transformer/',
+  publicRuntimeConfig: {
+    basePath: '/coordinate-transformer',
+  },
 };
 
 export default nextConfig;

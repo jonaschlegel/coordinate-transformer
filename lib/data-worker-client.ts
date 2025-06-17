@@ -19,7 +19,8 @@ export class DataWorkerClient {
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.worker = new Worker('/coordinate-transformer/data-worker.js');
+      const assetBase = process.env.NEXT_PUBLIC_BASE_PATH || '';
+      this.worker = new Worker(`${assetBase}/data-worker.js`);
     }
   }
 
