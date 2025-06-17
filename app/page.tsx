@@ -113,12 +113,7 @@ export default function HomePage() {
     setError(null);
     setProcessingProgress(0);
     try {
-      const isDevelopment =
-        typeof window !== 'undefined' &&
-        window.location.hostname === 'localhost';
-
       const assetBase = process.env.NEXT_PUBLIC_BASE_PATH || '';
-
       const dataUrl = `${assetBase}/points.json`;
       console.log('Loading data from:', dataUrl);
 

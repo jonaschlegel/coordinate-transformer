@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "deploy": "pnpm build && npx gh-pages -d out",
+    "build:github": "NEXT_PUBLIC_BASE_PATH=/coordinate-transformer NODE_ENV=production next build && NEXT_PUBLIC_BASE_PATH=/coordinate-transformer node scripts/fix-github-paths.mjs",
+    "deploy": "pnpm build:github && npx gh-pages -d out",
     "start": "next start",
     "lint": "next lint",
     "csv-to-json": "node ./scripts/csv-to-json.mjs"
@@ -35,6 +36,7 @@
     "@types/papaparse": "^5.3.16",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
+    "cross-env": "^7.0.3",
     "gh-pages": "^6.3.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",

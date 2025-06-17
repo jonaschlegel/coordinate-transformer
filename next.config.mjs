@@ -10,11 +10,10 @@ const nextConfig = {
     unoptimized: true,
   },
   output: 'export',
-  basePath: '/coordinate-transformer',
-  assetPrefix: '/coordinate-transformer/',
-  publicRuntimeConfig: {
-    basePath: '/coordinate-transformer',
-  },
+  ...(process.env.NEXT_PUBLIC_BASE_PATH && {
+    basePath: process.env.NEXT_PUBLIC_BASE_PATH,
+    assetPrefix: process.env.NEXT_PUBLIC_BASE_PATH,
+  }),
 };
 
 export default nextConfig;
