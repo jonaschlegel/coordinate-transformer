@@ -87,19 +87,19 @@ const TILE_LAYERS = {
 const DEFAULT_FALLBACK_COLOR = '#333333';
 
 const createCategoryIcon = (color: string, isSelected?: boolean) => {
+  const size = isSelected ? 18 : 14;
   const borderStyle = isSelected ? '3px solid #d97706' : '2px solid #fef3c7';
-  const size = isSelected ? '18px' : '14px';
   const shadow = isSelected
     ? '0 0 12px rgba(217, 119, 6, 0.4), 0 2px 8px rgba(101, 79, 60, 0.3)'
     : '0 2px 6px rgba(101, 79, 60, 0.2), 0 1px 3px rgba(101, 79, 60, 0.1)';
 
+  const anchor: [number, number] = [size / 2, size / 2];
+
   return L.divIcon({
-    html: `<span style="background-color: ${color}; width: ${size}; height: ${size}; border-radius: 50%; display: inline-block; border: ${borderStyle}; box-shadow: ${shadow}; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: ${
-      isSelected ? 'scale(1.1)' : 'scale(1)'
-    };"></span>`,
+    html: `<span style="background-color: ${color}; width: ${size}px; height: ${size}px; border-radius: 50%; display: inline-block; border: ${borderStyle}; box-shadow: ${shadow}; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); transform: scale(1);"></span>`,
     className: `custom-div-icon ${isSelected ? 'selected-marker-icon' : ''}`,
-    iconSize: isSelected ? [18, 18] : [14, 14],
-    iconAnchor: isSelected ? [9, 9] : [7, 7],
+    iconSize: [size, size],
+    iconAnchor: anchor,
   });
 };
 

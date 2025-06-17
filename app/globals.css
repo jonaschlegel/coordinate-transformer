@@ -218,11 +218,11 @@ body {
 
 /* Custom marker animations */
 .custom-div-icon {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
 .custom-div-icon:hover {
-  transform: scale(1.1) !important;
+  box-shadow: 0 0 8px 2px rgba(217, 119, 6, 0.15) !important;
 }
 
 .selected-marker-icon {
