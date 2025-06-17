@@ -10,12 +10,10 @@ if (basePath) {
   const outDir = 'out';
   const baseDir = join(outDir, basePath.replace('/', ''));
 
-  // Create the base directory if it doesn't exist
   if (!existsSync(baseDir)) {
     mkdirSync(baseDir, { recursive: true });
   }
 
-  // Copy static files that need to be accessible via the base path
   const filesToCopy = ['points.json', 'data-worker.js'];
 
   for (const file of filesToCopy) {
