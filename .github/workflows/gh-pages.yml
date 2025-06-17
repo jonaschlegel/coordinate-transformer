@@ -27,7 +27,7 @@ jobs:
         run: pnpm run csv-to-json
 
       - name: Build static site
-        run: pnpm run build
+        run: pnpm run build:github
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
