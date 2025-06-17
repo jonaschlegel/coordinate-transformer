@@ -2,17 +2,17 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Historical Atlas Coordinate Explorer',
+  title: 'Grote Atlas data display',
   description:
-    'A professional cartographic tool for visualizing and analyzing historical geographic coordinates from the Grote Atlas collection. Explore settlements, waterways, mountains, and other geographic features with interactive mapping and data analysis capabilities.',
+    'A webapp to load and transform csv data from the Grote Atlas. This app enables you to view the data on a map and filter and search through it.',
   keywords:
     'cartography, historical maps, geographic coordinates, atlas, GIS, historical geography, spatial analysis',
   authors: [{ name: 'Jona Schlegel' }],
   creator: 'Jona Schlegel',
   openGraph: {
-    title: 'Historical Atlas Coordinate Explorer',
+    title: 'Grote Atlas data display',
     description:
-      'Professional cartographic tool for historical geographic data visualization',
+      'Webapp to load, transform and visualise csv data from the Grote Atlas on an online map.',
     type: 'website',
   },
 };
